@@ -13,6 +13,10 @@ namespace vw {
 
         T width;
         T height;
+
+        bool operator==(const Size<T>& other) {
+            return width == other.width && height == other.height;
+        }
     };
 
     using SizeI = Size<int32_t>;

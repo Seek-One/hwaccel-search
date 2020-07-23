@@ -23,6 +23,8 @@ namespace vw {
         VdpDeviceDestroy* deviceDestroy;
         VdpOutputSurfaceCreate* outputSurfaceCreate;
         VdpOutputSurfaceDestroy* outputSurfaceDestroy;
+        VdpOutputSurfacePutBitsNative* outputSurfacePutBitsNative;
+        VdpOutputSurfaceGetParameters* outputSurfaceGetParameters;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);

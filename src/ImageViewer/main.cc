@@ -1,5 +1,6 @@
 #include <cassert>
 #include <csignal>
+#include <iostream>
 #include <thread>
 
 #include <VdpWrapper/Device.h>
@@ -16,7 +17,15 @@ void trap_sig(int sig) {
     gMustExit = 1;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        std::cerr << "Incorrect parameter" << std::endl;
+        std::cerr << "Usage" << std::endl;
+        std::cerr << "\t" << std::string(argv[0]) << " IMAGE_FILE" << std::endl;
+
+        return 1;
+    }
+
     std::signal(SIGINT, trap_sig);
     std::signal(SIGTERM, trap_sig);
 
@@ -24,7 +33,7 @@ int main() {
 
     vw::Display display(screenSize.width, screenSize.height);
     vw::Device device(display);
-    vw::SurfaceRGBA surface(device, screenSize);
+    vw::SurfaceRGBA surface(device, argv[1]);
 
     while (!gMustExit) {
         using namespace std::chrono_literals;

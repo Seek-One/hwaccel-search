@@ -13,11 +13,13 @@ add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_
 
 find_package(X11 REQUIRED)
 find_package(VDPAU REQUIRED)
+find_package(OpenCV REQUIRED)
 
 target_link_libraries(vdp_wrapper_target
     PRIVATE
         ${X11_LIBRARIES}
         ${VDPAU_LIBRARY}
+        ${OpenCV_LIBS}
 )
 
 ############

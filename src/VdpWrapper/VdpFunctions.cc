@@ -11,6 +11,8 @@ namespace vw {
     , deviceDestroy(nullptr)
     , outputSurfaceCreate(nullptr)
     , outputSurfaceDestroy(nullptr)
+    , outputSurfacePutBitsNative(nullptr)
+    , outputSurfaceGetParameters(nullptr)
     , m_pGetProcAddress(pGetProcAddress)
     , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_ERROR_STRING);
@@ -18,6 +20,8 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_DEVICE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE);
+        storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS);
     }
 
     std::string&& VdpFunctions::getErrorString(VdpStatus status) const {
@@ -53,6 +57,14 @@ namespace vw {
 
             case VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY:
                 outputSurfaceDestroy = reinterpret_cast<VdpOutputSurfaceDestroy*>(func);
+                break;
+
+            case VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE:
+                outputSurfacePutBitsNative = reinterpret_cast<VdpOutputSurfacePutBitsNative*>(func);
+                break;
+
+            case VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS:
+                outputSurfaceGetParameters = reinterpret_cast<VdpOutputSurfaceGetParameters*>(func);
                 break;
 
             default:
