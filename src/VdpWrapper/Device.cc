@@ -21,7 +21,8 @@ namespace vw {
         );
 
         if (vdpStatus != VDP_STATUS_OK) {
-            throw std::runtime_error("[Device] VDPAU device creation failed");
+            auto szError = getVdpFunctions()->getErrorString(vdpStatus);
+            throw std::runtime_error("[Device] VDPAU device creation failed: " + szError);
         }
 
         // Initialize the VdpFunctionsInstance
@@ -30,7 +31,8 @@ namespace vw {
         const char *szVdpInfos = nullptr;
         vdpStatus = getVdpFunctions()->getInformationString(&szVdpInfos);
         if (vdpStatus != VDP_STATUS_OK) {
-            throw std::runtime_error("[Device] Couldn't retrive VDPAU device inforamtions");
+            auto szError = getVdpFunctions()->getErrorString(vdpStatus);
+            throw std::runtime_error("[Device] Couldn't retrive VDPAU device inforamtions:  " + szError);
         }
 
         std::cout << "[Device] VDPAU device created" << std::endl;

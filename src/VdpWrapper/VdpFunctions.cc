@@ -7,13 +7,17 @@
 
 namespace vw {
     VdpFunctions::VdpFunctions(VdpDevice& vdpDevice, VdpGetProcAddress* pGetProcAddress)
-    : getErrorString(nullptr)
-    , getInformationString(nullptr)
+    : getInformationString(nullptr)
     , deviceDestroy(nullptr)
-    , m_pGetProcAddress(pGetProcAddress) {
+    , m_pGetProcAddress(pGetProcAddress)
+    , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_INFORMATION_STRING);
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_INFORMATION_STRING);
         storeFunction(vdpDevice, VDP_FUNC_ID_DEVICE_DESTROY);
+    }
+
+    std::string&& VdpFunctions::getErrorString(VdpStatus status) const {
+        return std::move(std::string(getErrorString(status)));
     }
 
     void VdpFunctions::storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID) {
@@ -27,7 +31,7 @@ namespace vw {
         // Store the callback
         switch (functionID) {
             case VDP_FUNC_ID_GET_ERROR_STRING:
-                getErrorString = reinterpret_cast<VdpGetErrorString*>(func);
+                m_pGetErrorString = reinterpret_cast<VdpGetErrorString*>(func);
                 break;
 
             case VDP_FUNC_ID_GET_INFORMATION_STRING:

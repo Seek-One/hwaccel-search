@@ -17,7 +17,8 @@ namespace vw {
         VdpFunctions& operator=(const VdpFunctions&) = delete;
         VdpFunctions& operator=(VdpFunctions&&) = delete;
 
-        VdpGetErrorString* getErrorString;
+        std::string&& getErrorString(VdpStatus status) const;
+
         VdpGetInformationString* getInformationString;
         VdpDeviceDestroy* deviceDestroy;
 
@@ -26,6 +27,7 @@ namespace vw {
 
     private:
         VdpGetProcAddress* m_pGetProcAddress;
+        VdpGetErrorString* m_pGetErrorString;
     };
 
     static std::unique_ptr<vw::VdpFunctions> gVdpFunctionsInstance;
