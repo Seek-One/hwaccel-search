@@ -1,5 +1,5 @@
 add_library(vdp_wrapper_target STATIC
-    Sample.cc
+    Display.cc
 )
 
 # Also make it accessible via namespace
@@ -9,8 +9,14 @@ add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_
 # Dependencies #
 ################
 
-# Subdir with CMake support
-# add_subdirectory(some/subdir)
+find_package(X11 REQUIRED)
+find_package(VDPAU REQUIRED)
+
+target_link_libraries(vdp_wrapper_target
+    PRIVATE
+        ${X11_LIBRARIES}
+        ${VDPAU_LIBRARY}
+)
 
 ############
 # Building #
@@ -19,13 +25,16 @@ add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_
 # Change the output name from "lib${LOCAL_PROJECT_NAMESPACE}_target.a" to "lib${LOCAL_PROJECT_OUTPUT_NAME}.a"
 set_target_properties(vdp_wrapper_target PROPERTIES
     OUTPUT_NAME ${LOCAL_PROJECT_OUTPUT_NAME}
+    CXX_STANDARD 14
+    CMAKE_CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
 )
 
 # Where to find the header files
 target_include_directories(vdp_wrapper_target
     PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}/gen-private-include
