@@ -6,7 +6,7 @@
 namespace vw {
     template<typename T>
     struct Size {
-        Size(T width, T height)
+        Size(T width = T(), T height = T())
         : width(width)
         , height(height) {
         }
