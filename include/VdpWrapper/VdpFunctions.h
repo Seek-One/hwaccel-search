@@ -1,7 +1,7 @@
 #ifndef VW_VDP_FUNCTIONS_H
 #define VW_VDP_FUNCTIONS_H
 
-#include <memory>
+#include <string>
 
 #include <vdpau/vdpau.h>
 
@@ -21,6 +21,8 @@ namespace vw {
 
         VdpGetInformationString* getInformationString;
         VdpDeviceDestroy* deviceDestroy;
+        VdpOutputSurfaceCreate* outputSurfaceCreate;
+        VdpOutputSurfaceDestroy* outputSurfaceDestroy;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);
@@ -30,27 +32,27 @@ namespace vw {
         VdpGetErrorString* m_pGetErrorString;
     };
 
-    static std::unique_ptr<vw::VdpFunctions> gVdpFunctionsInstance;
+    class VdpFunctionsInstance {
+    public:
+        VdpFunctionsInstance();
+        ~VdpFunctionsInstance();
 
-    static inline void initializeVdpFunctions(VdpDevice& vdpDevice, VdpGetProcAddress* pGetProcAddress) {
-        if (gVdpFunctionsInstance) {
-            throw std::runtime_error("The VDPAU functions are already initialized");
-        }
+        VdpFunctionsInstance(const VdpFunctionsInstance&) = delete;
+        VdpFunctionsInstance(VdpFunctionsInstance&&) = delete;
 
-        gVdpFunctionsInstance = std::make_unique<VdpFunctions>(vdpDevice, pGetProcAddress);
-    }
+        VdpFunctionsInstance& operator=(const VdpFunctionsInstance&) = delete;
+        VdpFunctionsInstance& operator=(VdpFunctionsInstance&&) = delete;
 
-    static inline void disposeVdpFunctions() {
-        gVdpFunctionsInstance.reset();
-    }
+        void create(VdpDevice& vdpDevice, VdpGetProcAddress* pGetProcAddress);
+        void dispose();
 
-    static inline const VdpFunctions* getVdpFunctions() {
-        if (!gVdpFunctionsInstance) {
-            throw std::runtime_error("The VDPAU functions are not initialized. You must first create a vw::Device.");
-        }
+        VdpFunctions* operator()();
 
-        return gVdpFunctionsInstance.get();
-    }
+    private:
+        VdpFunctions *m_pVdpFunction;
+    };
+
+    extern VdpFunctionsInstance gVdpFunctionsInstance;
 }
 
 #endif // VW_VDP_FUNCTIONS_H

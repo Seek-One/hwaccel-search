@@ -19,6 +19,9 @@ namespace vw {
 
     private:
         VdpDevice m_VdpDevice;
+
+    private:
+        friend class SurfaceRGBA;
     };
 }
 

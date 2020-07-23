@@ -4,6 +4,7 @@
 
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
+#include <VdpWrapper/SurfaceRGBA.h>
 
 namespace {
     std::sig_atomic_t gMustExit = 0;
@@ -19,8 +20,11 @@ int main() {
     std::signal(SIGINT, trap_sig);
     std::signal(SIGTERM, trap_sig);
 
-    vw::Display display(1280, 720);
+    vw::SizeU screenSize(1280, 720);
+
+    vw::Display display(screenSize.width, screenSize.height);
     vw::Device device(display);
+    vw::SurfaceRGBA surface(device, screenSize);
 
     while (!gMustExit) {
         using namespace std::chrono_literals;

@@ -7,6 +7,7 @@
 #include <vdpau/vdpau_x11.h>
 
 #include <VdpWrapper/Display.h>
+#include <VdpWrapper/SurfaceRGBA.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
@@ -21,17 +22,17 @@ namespace vw {
         );
 
         if (vdpStatus != VDP_STATUS_OK) {
-            auto szError = getVdpFunctions()->getErrorString(vdpStatus);
+            auto szError = gVdpFunctionsInstance()->getErrorString(vdpStatus);
             throw std::runtime_error("[Device] VDPAU device creation failed: " + szError);
         }
 
         // Initialize the VdpFunctionsInstance
-        initializeVdpFunctions(m_VdpDevice, pGetProcAddress);
+        gVdpFunctionsInstance.create(m_VdpDevice, pGetProcAddress);
 
         const char *szVdpInfos = nullptr;
-        vdpStatus = getVdpFunctions()->getInformationString(&szVdpInfos);
+        vdpStatus = gVdpFunctionsInstance()->getInformationString(&szVdpInfos);
         if (vdpStatus != VDP_STATUS_OK) {
-            auto szError = getVdpFunctions()->getErrorString(vdpStatus);
+            auto szError = gVdpFunctionsInstance()->getErrorString(vdpStatus);
             throw std::runtime_error("[Device] Couldn't retrive VDPAU device inforamtions:  " + szError);
         }
 
@@ -40,6 +41,7 @@ namespace vw {
     }
 
     Device::~Device() {
-        getVdpFunctions()->deviceDestroy(m_VdpDevice);
+        gVdpFunctionsInstance()->deviceDestroy(m_VdpDevice);
+        gVdpFunctionsInstance.dispose();
     }
 }
