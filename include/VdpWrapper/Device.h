@@ -18,17 +18,7 @@ namespace vw {
         Device& operator=(Device&&) = delete;
 
     private:
-        void storeFunction(VdpFuncId functionID);
-
-    private:
-        // VDPAU objects
         VdpDevice m_VdpDevice;
-
-        // VDPAU function pointors
-        VdpGetProcAddress* m_funcGetProcAddress;
-        VdpGetErrorString* m_funcGetErrorString;
-        VdpGetInformationString* m_funcGetInformationString;
-        VdpDeviceDestroy* m_funcDeviceDestroy;
     };
 }
 

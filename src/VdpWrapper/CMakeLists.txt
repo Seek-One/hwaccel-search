@@ -1,6 +1,7 @@
 add_library(vdp_wrapper_target STATIC
     Device.cc
     Display.cc
+    VdpFunctions.cc
 )
 
 add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_target)
