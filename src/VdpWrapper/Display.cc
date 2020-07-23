@@ -12,7 +12,6 @@ namespace vw {
         m_pXDisplay = XOpenDisplay(nullptr);
         m_iXScreen = DefaultScreen(m_pXDisplay);
 
-
         // Get some colors
         int iBlackColor = BlackPixel(m_pXDisplay, m_iXScreen);
         int iWhiteColor = WhitePixel(m_pXDisplay, m_iXScreen);
@@ -47,5 +46,13 @@ namespace vw {
     Display::~Display() {
         XDestroyWindow(m_pXDisplay, m_XWindow);
         XCloseDisplay(m_pXDisplay);
+    }
+
+    ::Display* Display::getXDisplay() {
+        return m_pXDisplay;
+    }
+
+    int Display::getXScreen() const {
+        return m_iXScreen;
     }
 }

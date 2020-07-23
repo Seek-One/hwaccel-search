@@ -1,8 +1,8 @@
 add_library(vdp_wrapper_target STATIC
+    Device.cc
     Display.cc
 )
 
-# Also make it accessible via namespace
 add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_target)
 
 ################
@@ -30,7 +30,6 @@ set_target_properties(vdp_wrapper_target PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
-# Where to find the header files
 target_include_directories(vdp_wrapper_target
     PUBLIC
         $<INSTALL_INTERFACE:include>
@@ -39,12 +38,6 @@ target_include_directories(vdp_wrapper_target
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}/gen-private-include
 )
-
-# # Generate a private header "version.h" defining PROJECT_VERSION
-# configure_file (
-#     "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
-#     "${CMAKE_CURRENT_BINARY_DIR}/gen-private-include/version.h"
-# )
 
 # Turn on warnings
 target_compile_options(vdp_wrapper_target PRIVATE $<$<CXX_COMPILER_ID:GNU>:
@@ -63,8 +56,6 @@ target_compile_options(vdp_wrapper_target PRIVATE $<$<CXX_COMPILER_ID:MSVC>:
 # Exporting #
 #############
 
-# Write a version file so that CMake's find_package() can check for a specific
-# version of this package.
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     ${LOCAL_PROJECT_NAME}ConfigVersion.cmake

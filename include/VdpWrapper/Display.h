@@ -15,6 +15,9 @@ namespace vw {
         Display& operator=(const Display&) = delete;
         Display& operator=(Display&&) = delete;
 
+        ::Display* getXDisplay();
+        int getXScreen() const;
+
     private:
         ::Display* m_pXDisplay;
         int m_iXScreen;

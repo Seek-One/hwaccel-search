@@ -2,6 +2,7 @@
 #include <csignal>
 #include <thread>
 
+#include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
 
 namespace {
@@ -19,6 +20,7 @@ int main() {
     std::signal(SIGTERM, trap_sig);
 
     vw::Display display(1280, 720);
+    vw::Device device(display);
 
     while (!gMustExit) {
         using namespace std::chrono_literals;
