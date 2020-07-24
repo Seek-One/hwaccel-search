@@ -13,6 +13,8 @@ namespace vw {
     , outputSurfaceDestroy(nullptr)
     , outputSurfacePutBitsNative(nullptr)
     , outputSurfaceGetParameters(nullptr)
+    , presentationQueueTargetCreateX11(nullptr)
+    , presentationQueueTargetDestroy(nullptr)
     , m_pGetProcAddress(pGetProcAddress)
     , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_ERROR_STRING);
@@ -22,20 +24,29 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_DESTROY);
     }
 
-    std::string&& VdpFunctions::getErrorString(VdpStatus status) const {
-        return std::move(std::string(m_pGetErrorString(status)));
+    std::string VdpFunctions::getErrorString(VdpStatus status) const {
+        return std::string(m_pGetErrorString(status));
+    }
+
+    void VdpFunctions::throwExceptionOnFail(VdpStatus vdpStatus, const std::string& message) {
+        if (vdpStatus != VDP_STATUS_OK) {
+            auto szError = getErrorString(vdpStatus);
+            throw std::runtime_error(
+                message + "\n" +
+                "\tError code: " + std::to_string(vdpStatus) + "\n" +
+                "\tError string: " + szError);
+        }
     }
 
     void VdpFunctions::storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID) {
         // Get the callback
         void* func = nullptr;
-        VdpStatus ret = m_pGetProcAddress(vdpDevice, functionID, &func);
-        if (ret != VDP_STATUS_OK) {
-            auto szError = getErrorString(ret);
-            throw std::runtime_error("[VdpFunctions] Error getting the #" + std::to_string(functionID) + " callback: " + szError);
-        }
+        VdpStatus vdpStatus = m_pGetProcAddress(vdpDevice, functionID, &func);
+        throwExceptionOnFail(vdpStatus, "[VdpFunctions] Error getting the #" + std::to_string(functionID) + " callback");
 
         // Store the callback
         switch (functionID) {
@@ -65,6 +76,14 @@ namespace vw {
 
             case VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS:
                 outputSurfaceGetParameters = reinterpret_cast<VdpOutputSurfaceGetParameters*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11:
+                presentationQueueTargetCreateX11 = reinterpret_cast<VdpPresentationQueueTargetCreateX11*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_DESTROY:
+                presentationQueueTargetDestroy = reinterpret_cast<VdpPresentationQueueTargetDestroy*>(func);
                 break;
 
             default:

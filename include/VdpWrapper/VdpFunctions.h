@@ -4,6 +4,7 @@
 #include <string>
 
 #include <vdpau/vdpau.h>
+#include <vdpau/vdpau_x11.h>
 
 namespace vw {
     class VdpFunctions {
@@ -17,7 +18,8 @@ namespace vw {
         VdpFunctions& operator=(const VdpFunctions&) = delete;
         VdpFunctions& operator=(VdpFunctions&&) = delete;
 
-        std::string&& getErrorString(VdpStatus status) const;
+        std::string getErrorString(VdpStatus status) const;
+        void throwExceptionOnFail(VdpStatus vdpStatus, const std::string& message);
 
         VdpGetInformationString* getInformationString;
         VdpDeviceDestroy* deviceDestroy;
@@ -25,6 +27,8 @@ namespace vw {
         VdpOutputSurfaceDestroy* outputSurfaceDestroy;
         VdpOutputSurfacePutBitsNative* outputSurfacePutBitsNative;
         VdpOutputSurfaceGetParameters* outputSurfaceGetParameters;
+        VdpPresentationQueueTargetCreateX11* presentationQueueTargetCreateX11;
+        VdpPresentationQueueTargetDestroy* presentationQueueTargetDestroy;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);

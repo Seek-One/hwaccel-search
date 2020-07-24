@@ -1,6 +1,7 @@
 #include <VdpWrapper/SurfaceRGBA.h>
 
 #include <array>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -94,10 +95,7 @@ namespace vw {
             pitches.data(),
             nullptr // Update all the surface
         );
-        if (vdpStatus != VDP_STATUS_OK) {
-            auto szError = gVdpFunctionsInstance()->getErrorString(vdpStatus);
-            throw std::runtime_error("[SurfaceRGBA] Couldn't upload bytes from source image: " + szError);
-        }
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't upload bytes from source image");
     }
 
     SurfaceRGBA::~SurfaceRGBA() {
@@ -115,10 +113,7 @@ namespace vw {
             size.height,
             &m_vdpOutputSurface
         );
-        if (vdpStatus != VDP_STATUS_OK) {
-            auto szError = gVdpFunctionsInstance()->getErrorString(vdpStatus);
-            throw std::runtime_error("[SurfaceRGBA] Couldn't create an output surface: " + szError);
-        }
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't create an output surface");
 
         SizeU realSize;
         VdpRGBAFormat format;
@@ -128,10 +123,7 @@ namespace vw {
             &realSize.width,
             &realSize.height
         );
-        if (vdpStatus != VDP_STATUS_OK) {
-            auto szError = gVdpFunctionsInstance()->getErrorString(vdpStatus);
-            throw std::runtime_error("[SurfaceRGBA] Couldn't retreive surface informations: " + szError);
-        }
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't retreive surface informations");
 
         assert(format == VDP_RGBA_FORMAT_B8G8R8A8);
         assert(realSize == m_size); // TODO: VDPAU API says the size must be different form call to align data
