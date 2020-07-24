@@ -25,6 +25,9 @@ namespace vw {
         GC m_gc;
         int m_iWidth;
         int m_iHeight;
+
+    private:
+        friend class PresentationQueue;
     };
 }
 

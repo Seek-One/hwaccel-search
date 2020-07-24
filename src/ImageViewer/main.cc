@@ -5,6 +5,7 @@
 
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
+#include <VdpWrapper/PresentationQueue.h>
 #include <VdpWrapper/SurfaceRGBA.h>
 
 namespace {
@@ -33,7 +34,8 @@ int main(int argc, char *argv[]) {
 
     vw::Display display(screenSize.width, screenSize.height);
     vw::Device device(display);
-    vw::SurfaceRGBA surface(device, argv[1]);
+    vw::PresentationQueue presentationQueue(display, device);
+    vw::SurfaceRGBA surface(device, screenSize);
 
     while (!gMustExit) {
         using namespace std::chrono_literals;

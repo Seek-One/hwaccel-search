@@ -29,6 +29,8 @@ namespace vw {
         VdpOutputSurfaceGetParameters* outputSurfaceGetParameters;
         VdpPresentationQueueTargetCreateX11* presentationQueueTargetCreateX11;
         VdpPresentationQueueTargetDestroy* presentationQueueTargetDestroy;
+        VdpPresentationQueueCreate* presentationQueueCreate;
+        VdpPresentationQueueDestroy* presentationQueueDestroy;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);

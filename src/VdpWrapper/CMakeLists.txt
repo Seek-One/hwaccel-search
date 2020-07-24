@@ -1,6 +1,7 @@
 add_library(vdp_wrapper_target STATIC
     Device.cc
     Display.cc
+    PresentationQueue.cc
     SurfaceRGBA.cc
     VdpFunctions.cc
 )
