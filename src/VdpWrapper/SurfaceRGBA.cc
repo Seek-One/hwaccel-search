@@ -67,7 +67,7 @@ namespace vw {
         }
 
         std::array<const uint8_t*, 4> planes;
-        for (unsigned i = 0; i < 4; ++i) {
+        for (unsigned i = 0; i < planes.size(); ++i) {
             planes[i] = matPlanes[i].data;
         }
 
