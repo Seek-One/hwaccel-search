@@ -11,6 +11,45 @@
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/VdpFunctions.h>
 
+namespace {
+    // The VDP_RGBA_FORMAT_B8G8R8A8 is a one plane format :
+    // https://vdpau.pages.freedesktop.org/libvdpau/group__misc__types.html#ga2659adf5d019acade5516ea35e4eb5ad
+    class ImageBuffer {
+    public:
+        ImageBuffer(cv::Mat &decodedImage) {
+            assert(decodedImage.channels() == 3); // No alpha channel
+            assert(decodedImage.depth() == CV_8U); // Only 8 bits color
+            assert(decodedImage.isContinuous()); // Data must be continuous
+
+            // Set line size
+            m_lineSize = decodedImage.size().width * 4; // one line is 4 unit8_t color
+            m_data.resize(decodedImage.size().width * decodedImage.size().height * 4);
+
+            // Fill the buffers
+            cv::MatIterator_<cv::Vec3b> it, end;
+            int index = 0;
+            for (it = decodedImage.begin<cv::Vec3b>(), end = decodedImage.end<cv::Vec3b>(); it != end; ++it, index += 4) {
+                m_data[index + 0] = (*it)[0]; // Blue
+                m_data[index + 1] = (*it)[1]; // Green
+                m_data[index + 2] = (*it)[2]; // Red
+                m_data[index + 3] = std::numeric_limits<uint8_t>::max(); // Alpha channel
+            }
+        }
+
+        const uint32_t* getLineSize() const {
+            return &m_lineSize;
+        }
+
+        const uint8_t* getPlane() const {
+            return m_data.data();
+        }
+
+    private:
+        std::vector<uint8_t> m_data;
+        uint32_t m_lineSize;
+    };
+}
+
 namespace vw {
     SurfaceRGBA::SurfaceRGBA(Device& device, const SizeU& size)
     : m_vdpOutputSurface(VDP_INVALID_HANDLE)
@@ -22,77 +61,22 @@ namespace vw {
     : m_vdpOutputSurface(VDP_INVALID_HANDLE)
     , m_size({ 0u, 0u}) {
         // Load the image with openCV
-        cv::Mat compressedImage = cv::imread(filename);
-        cv::Mat decompressedImage;
+        cv::Mat decompressedImage = cv::imread(filename);
 
-        // Add a alpha channel if needed
-        if (compressedImage.channels() == 3) {
-            // FIXME: On buster 10, this call provoke valgrind errors:
-            // Warning: noted but unhandled ioctl 0x30000001 with no size/direction hints.
-            //    This could cause spurious value errors to appear.
-            //    See README_MISSING_SYSCALL_OR_IOCTL for guidance on writing a proper wrapper.
-            // Warning: noted but unhandled ioctl 0x27 with no size/direction hints.
-            //    This could cause spurious value errors to appear.
-            //    See README_MISSING_SYSCALL_OR_IOCTL for guidance on writing a proper wrapper.
-            // Conditional jump or move depends on uninitialised value(s)
-            //    at 0x1EFBB2D6: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EFBF9ED: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EE433B7: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EFC206C: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EFC22B9: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EE4512F: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EE07E3C: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1EE08631: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1ECE128C: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x1ECE1187: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libnvidia-opencl.so.440.100)
-            //    by 0x4854A23: ??? (in /usr/lib/x86_64-linux-gnu/libOpenCL.so.1.0.0)
-            //    by 0x48554E2: clGetPlatformIDs (in /usr/lib/x86_64-linux-gnu/libOpenCL.so.1.0.0)
-            cv::cvtColor(compressedImage, decompressedImage, CV_BGR2BGRA);
-        } else {
-            decompressedImage = compressedImage;
-        }
+        // Create planes
+        ImageBuffer buffer(decompressedImage);
 
-        // Split contiguous image data into different planes
-        std::vector<cv::Mat> matPlanes(4);
-        cv::split(decompressedImage, matPlanes);
-
-        SizeU imageSize(decompressedImage.cols, decompressedImage.rows);
+        // Create VdpSurface
+        SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
         std::cout << "[SurfaceRGBA] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
         allocateVdpSurface(device, imageSize);
 
-        // Initialize the surface with image bytes
-        std::array<uint32_t, 4> pitches;
-        for (auto& pitche: pitches) {
-            pitche = imageSize.width;
-        }
-
-        std::array<const uint8_t*, 4> planes;
-        for (unsigned i = 0; i < planes.size(); ++i) {
-            planes[i] = matPlanes[i].data;
-        }
-
-        // FIXME: On buster 10, the previous valgrind error have a side effect:
-        // Invalid read of size 8
-        //    at 0x483A03F: memcpy@GLIBC_2.2.5 (vg_replace_strmem.c:1033)
-        //    by 0x1E1A69A4: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libvdpau_nvidia.so.440.100)
-        //    by 0x1E1A8E22: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libvdpau_nvidia.so.440.100)
-        //    by 0x1E1A90EF: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libvdpau_nvidia.so.440.100)
-        //    by 0x1E1A9C09: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libvdpau_nvidia.so.440.100)
-        //    by 0x1E187DE3: ??? (in /usr/lib/x86_64-linux-gnu/nvidia/current/libvdpau_nvidia.so.440.100)
-        //    by 0x10C782: vw::SurfaceRGBA::SurfaceRGBA(vw::Device&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (SurfaceRGBA.cc:59)
-        //    by 0x10B747: main (main.cc:36)
-        //  Address 0x2c6e50a8 is 16 bytes after a block of size 921,624 alloc'd
-        //    at 0x483577F: malloc (vg_replace_malloc.c:299)
-        //    by 0x5F6EB11: cv::fastMalloc(unsigned long) (in /usr/lib/x86_64-linux-gnu/libopencv_core.so.3.2.0)
-        //    by 0x6061D86: cv::Mat::create(int, int const*, int) (in /usr/lib/x86_64-linux-gnu/libopencv_core.so.3.2.0)
-        //    by 0x6079065: cv::_OutputArray::create(int, int const*, int, int, bool, int) const (in /usr/lib/x86_64-linux-gnu/libopencv_core.so.3.2.0)
-        //    by 0x5FB2653: cv::split(cv::_InputArray const&, cv::_OutputArray const&) (in /usr/lib/x86_64-linux-gnu/libopencv_core.so.3.2.0)
-        //    by 0x10C5B3: vw::SurfaceRGBA::SurfaceRGBA(vw::Device&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (SurfaceRGBA.cc:36)
-        //    by 0x10B747: main (main.cc:36)
+        // Upload bytes to the surface
+        const void* planes[1] = { buffer.getPlane() };
         auto vdpStatus = gVdpFunctionsInstance()->outputSurfacePutBitsNative(
             m_vdpOutputSurface,
-            reinterpret_cast<const void* const*>(planes.data()),
-            pitches.data(),
+            planes,
+            buffer.getLineSize(),
             nullptr // Update all the surface
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't upload bytes from source image");
