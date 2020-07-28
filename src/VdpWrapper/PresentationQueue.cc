@@ -20,6 +20,19 @@ namespace vw {
             &m_vdpQueue
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't create the queue");
+
+        // Set background color
+        VdpColor backgroundColor;
+        backgroundColor.blue = 0.0f;
+        backgroundColor.green = 0.0f;
+        backgroundColor.red = 0.0f;
+        backgroundColor.alpha = 1.0f;
+
+        vdpStatus = gVdpFunctionsInstance()->presentationQueueSetBackgroundColor(
+            m_vdpQueue,
+            &backgroundColor
+        );
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't set the background color");
     }
 
     PresentationQueue::~PresentationQueue() {

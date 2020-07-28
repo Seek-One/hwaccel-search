@@ -21,9 +21,8 @@ int main(int argc, char *argv[]) {
     vw::PresentationQueue presentationQueue(display, device);
     vw::SurfaceRGBA surface(device, argv[1]);
 
-    presentationQueue.enqueue(surface);
-
     while (display.isOpened()) {
+        presentationQueue.enqueue(surface);
         display.processEvent();
     }
 
