@@ -35,7 +35,9 @@ int main(int argc, char *argv[]) {
     vw::Display display(screenSize.width, screenSize.height);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::SurfaceRGBA surface(device, screenSize);
+    vw::SurfaceRGBA surface(device, argv[1]);
+
+    presentationQueue.enqueue(surface);
 
     while (!gMustExit) {
         using namespace std::chrono_literals;

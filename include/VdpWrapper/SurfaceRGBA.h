@@ -28,6 +28,9 @@ namespace vw {
     private:
         VdpOutputSurface m_vdpOutputSurface;
         SizeU m_size;
+
+    private:
+        friend class PresentationQueue;
     };
 }
 

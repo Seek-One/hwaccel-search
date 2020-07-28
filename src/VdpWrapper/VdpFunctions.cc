@@ -17,6 +17,9 @@ namespace vw {
     , presentationQueueTargetDestroy(nullptr)
     , presentationQueueCreate(nullptr)
     , presentationQueueDestroy(nullptr)
+    , presentationQueueSetBackgroundColor(nullptr)
+    , presentationQueueGetTime(nullptr)
+    , presentationQueueDisplay(nullptr)
     , m_pGetProcAddress(pGetProcAddress)
     , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_ERROR_STRING);
@@ -30,6 +33,9 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_DESTROY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_SET_BACKGROUND_COLOR);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_GET_TIME);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_DISPLAY);
     }
 
     std::string VdpFunctions::getErrorString(VdpStatus status) const {
@@ -96,6 +102,18 @@ namespace vw {
 
             case VDP_FUNC_ID_PRESENTATION_QUEUE_DESTROY:
                 presentationQueueDestroy = reinterpret_cast<VdpPresentationQueueDestroy*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_SET_BACKGROUND_COLOR:
+                presentationQueueSetBackgroundColor = reinterpret_cast<VdpPresentationQueueSetBackgroundColor*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_GET_TIME:
+                presentationQueueGetTime = reinterpret_cast<VdpPresentationQueueGetTime*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_DISPLAY:
+                presentationQueueDisplay = reinterpret_cast<VdpPresentationQueueDisplay*>(func);
                 break;
 
             default:

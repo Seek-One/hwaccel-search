@@ -31,6 +31,9 @@ namespace vw {
         VdpPresentationQueueTargetDestroy* presentationQueueTargetDestroy;
         VdpPresentationQueueCreate* presentationQueueCreate;
         VdpPresentationQueueDestroy* presentationQueueDestroy;
+        VdpPresentationQueueSetBackgroundColor* presentationQueueSetBackgroundColor;
+        VdpPresentationQueueGetTime* presentationQueueGetTime;
+        VdpPresentationQueueDisplay* presentationQueueDisplay;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);
