@@ -7,7 +7,8 @@ namespace vw {
     : m_pXDisplay(nullptr)
     , m_iXScreen(0)
     , m_iWidth(iWidth)
-    , m_iHeight(iHeight) {
+    , m_iHeight(iHeight)
+    , m_bIsOpened(false) {
         // Allocate the X display
         m_pXDisplay = XOpenDisplay(nullptr);
         m_iXScreen = DefaultScreen(m_pXDisplay);
@@ -41,6 +42,11 @@ namespace vw {
         }
 
         XFlush(m_pXDisplay);
+
+        // Handle close window event
+        m_bIsOpened = true;
+        m_windowDeleteMessage = XInternAtom(m_pXDisplay, "WM_DELETE_WINDOW", false);
+        XSetWMProtocols(m_pXDisplay, m_XWindow, &m_windowDeleteMessage, 1);
     }
 
     Display::~Display() {
@@ -54,5 +60,25 @@ namespace vw {
 
     int Display::getXScreen() const {
         return m_iXScreen;
+    }
+
+    bool Display::isOpened() const {
+        return m_bIsOpened;
+    }
+
+    void Display::processEvent() {
+        XEvent event;
+        XNextEvent(m_pXDisplay, &event);
+
+        switch (event.type) {
+        case ClientMessage:
+            if (static_cast<Atom>(event.xclient.data.l[0]) == m_windowDeleteMessage) {
+                m_bIsOpened = false;
+            }
+            break;
+
+        default:
+            break;
+        }
     }
 }

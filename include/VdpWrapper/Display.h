@@ -18,6 +18,10 @@ namespace vw {
         ::Display* getXDisplay();
         int getXScreen() const;
 
+        bool isOpened() const;
+
+        void processEvent();
+
     private:
         ::Display* m_pXDisplay;
         int m_iXScreen;
@@ -25,6 +29,8 @@ namespace vw {
         GC m_gc;
         int m_iWidth;
         int m_iHeight;
+        bool m_bIsOpened;
+        Atom m_windowDeleteMessage;
 
     private:
         friend class PresentationQueue;
