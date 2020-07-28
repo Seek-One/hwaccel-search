@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
     vw::SizeU screenSize(1280, 720);
 
-    vw::Display display(screenSize.width, screenSize.height);
+    vw::Display display(screenSize);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
     vw::SurfaceRGBA surface(device, argv[1]);

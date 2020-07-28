@@ -3,10 +3,13 @@
 
 #include <X11/Xlib.h>
 
+#include <VdpWrapper/Size.h>
+
 namespace vw {
     class Display {
     public:
         Display(int iWidth, int iHeight);
+        Display(SizeU &size);
         ~Display();
 
         Display(const Display&) = delete;

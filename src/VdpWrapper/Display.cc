@@ -49,6 +49,11 @@ namespace vw {
         XSetWMProtocols(m_pXDisplay, m_XWindow, &m_windowDeleteMessage, 1);
     }
 
+    Display::Display(SizeU &size)
+    : Display(size.width, size.height) {
+
+    }
+
     Display::~Display() {
         XDestroyWindow(m_pXDisplay, m_XWindow);
         XCloseDisplay(m_pXDisplay);
