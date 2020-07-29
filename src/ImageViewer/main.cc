@@ -4,6 +4,7 @@
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/PresentationQueue.h>
 #include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/VideoMixer.h>
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -20,6 +21,7 @@ int main(int argc, char *argv[]) {
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
     vw::SurfaceYUV surface(device, argv[1], screenSize);
+    vw::VideoMixer mixer(device, screenSize);
 
     while (display.isOpened()) {
         display.processEvent();

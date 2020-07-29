@@ -6,6 +6,7 @@ add_library(vdp_wrapper_target STATIC
     SurfaceRGBA.cc
     SurfaceYUV.cc
     VdpFunctions.cc
+    VideoMixer.cc
 )
 
 add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS vdp_wrapper_target)

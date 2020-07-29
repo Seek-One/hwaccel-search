@@ -31,6 +31,8 @@ namespace vw {
         VdpVideoSurfaceDestroy* videoSurfaceDestroy;
         VdpVideoSurfacePutBitsYCbCr* videoSurfacePutBitsYCbCr;
         VdpVideoSurfaceGetParameters* videoSurfaceGetParameters;
+        VdpVideoMixerCreate* videoMixerCreate;
+        VdpVideoMixerDestroy* videoMixerDestroy;
         VdpPresentationQueueTargetCreateX11* presentationQueueTargetCreateX11;
         VdpPresentationQueueTargetDestroy* presentationQueueTargetDestroy;
         VdpPresentationQueueCreate* presentationQueueCreate;
