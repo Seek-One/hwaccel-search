@@ -19,6 +19,7 @@ namespace vw {
     , videoSurfaceGetParameters(nullptr)
     , videoMixerCreate(nullptr)
     , videoMixerDestroy(nullptr)
+    , videoMixerRender(nullptr)
     , presentationQueueTargetCreateX11(nullptr)
     , presentationQueueTargetDestroy(nullptr)
     , presentationQueueCreate(nullptr)
@@ -39,6 +40,9 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_PUT_BITS_Y_CB_CR);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_GET_PARAMETERS);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_CREATE);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_DESTROY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_RENDER);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_CREATE);
@@ -46,8 +50,6 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_SET_BACKGROUND_COLOR);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_GET_TIME);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_DISPLAY);
-        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_CREATE);
-        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_DESTROY);
     }
 
     std::string VdpFunctions::getErrorString(VdpStatus status) const {
@@ -122,6 +124,10 @@ namespace vw {
 
             case VDP_FUNC_ID_VIDEO_MIXER_DESTROY:
                 videoMixerDestroy = reinterpret_cast<VdpVideoMixerDestroy*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_MIXER_RENDER:
+                videoMixerRender = reinterpret_cast<VdpVideoMixerRender*>(func);
                 break;
 
             case VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11:

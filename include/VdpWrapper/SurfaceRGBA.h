@@ -31,6 +31,7 @@ namespace vw {
 
     private:
         friend class PresentationQueue;
+        friend class VideoMixer;
     };
 }
 

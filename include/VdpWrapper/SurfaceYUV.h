@@ -26,6 +26,9 @@ namespace vw {
     private:
         VdpVideoSurface m_vdpVideoSurface;
         SizeU m_size;
+
+    private:
+        friend class VideoMixer;
     };
 }
 

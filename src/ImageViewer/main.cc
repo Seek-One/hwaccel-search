@@ -3,6 +3,7 @@
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/PresentationQueue.h>
+#include <VdpWrapper/SurfaceRGBA.h>
 #include <VdpWrapper/SurfaceYUV.h>
 #include <VdpWrapper/VideoMixer.h>
 
@@ -20,10 +21,13 @@ int main(int argc, char *argv[]) {
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::SurfaceYUV surface(device, argv[1], screenSize);
+    vw::SurfaceYUV inputSurface(device, argv[1], screenSize);
+    vw::SurfaceRGBA outputSurface(device, screenSize);
     vw::VideoMixer mixer(device, screenSize);
 
     while (display.isOpened()) {
+        mixer.process(inputSurface, outputSurface);
+        presentationQueue.enqueue(outputSurface);
         display.processEvent();
     }
 

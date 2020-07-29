@@ -1,6 +1,8 @@
 #include <VdpWrapper/VideoMixer.h>
 
 #include <VdpWrapper/Device.h>
+#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/SurfaceYUV.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
@@ -29,5 +31,39 @@ namespace vw {
 
     VideoMixer::~VideoMixer() {
         gVdpFunctionsInstance()->videoMixerDestroy(m_mixer);
+    }
+
+    void VideoMixer::process(SurfaceYUV &inputSurface, SurfaceRGBA &outputSurface) {
+        VdpStatus vdpStatus = gVdpFunctionsInstance()->videoMixerRender(
+            m_mixer,
+            // Background
+            VDP_INVALID_HANDLE, // No background surface
+            nullptr,
+
+            VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME, // Entire frame
+
+            // Past surfaces
+            0, // No past surface
+            nullptr,
+
+            // Current frame
+            inputSurface.m_vdpVideoSurface,
+
+            // Future surfaces
+            0, // No future surfaces
+            nullptr,
+
+            nullptr, // Work on the entire surface
+            outputSurface.m_vdpOutputSurface,
+
+            // Render on the entire sufrace
+            nullptr,
+            nullptr,
+
+            // Layer
+            0, // No layer
+            nullptr
+        );
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[VideoMixer] Couldn't render the surface");
     }
 }
