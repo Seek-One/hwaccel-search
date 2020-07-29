@@ -18,7 +18,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 project(${LOCAL_PROJECT_NAME}
     VERSION ${LOCAL_PROJECT_VERSION}
     DESCRIPTION ${LOCAL_PROJECT_DESCRIPTION}
-    LANGUAGES CXX)
+)
 
 add_subdirectory(src/VdpWrapper)
 add_subdirectory(src/ImageViewer)
+add_subdirectory(lib/vendor)
+add_subdirectory(src/h264Player)
