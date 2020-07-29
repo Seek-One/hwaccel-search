@@ -25,7 +25,7 @@ namespace vw {
         cv::Mat decompressedImage = cv::imread(filename);
 
         // Create planes
-        ImageBuffer buffer(decompressedImage, ImageFormat::BGRA);
+        ImageBuffer buffer(decompressedImage);
 
         // Create VdpSurface
         SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
@@ -72,7 +72,7 @@ namespace vw {
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't retreive surface informations");
 
         assert(format == VDP_RGBA_FORMAT_B8G8R8A8);
-        assert(realSize == m_size); // TODO: VDPAU API says the size must be different form call to align data
+        assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
         std::cout << "[SurfaceRGBA] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
     }

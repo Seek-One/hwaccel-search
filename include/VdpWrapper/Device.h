@@ -22,6 +22,7 @@ namespace vw {
 
     private:
         friend class SurfaceRGBA;
+        friend class SurfaceYUV;
         friend class PresentationQueue;
     };
 }

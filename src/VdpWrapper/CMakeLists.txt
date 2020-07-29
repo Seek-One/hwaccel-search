@@ -4,6 +4,7 @@ add_library(vdp_wrapper_target STATIC
     ImageBuffer.cc
     PresentationQueue.cc
     SurfaceRGBA.cc
+    SurfaceYUV.cc
     VdpFunctions.cc
 )
 

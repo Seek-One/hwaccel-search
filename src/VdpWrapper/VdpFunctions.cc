@@ -13,6 +13,10 @@ namespace vw {
     , outputSurfaceDestroy(nullptr)
     , outputSurfacePutBitsNative(nullptr)
     , outputSurfaceGetParameters(nullptr)
+    , videoSurfaceCreate(nullptr)
+    , videoSurfaceDestroy(nullptr)
+    , videoSurfacePutBitsYCbCr(nullptr)
+    , videoSurfaceGetParameters(nullptr)
     , presentationQueueTargetCreateX11(nullptr)
     , presentationQueueTargetDestroy(nullptr)
     , presentationQueueCreate(nullptr)
@@ -29,6 +33,10 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_CREATE);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_DESTROY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_PUT_BITS_Y_CB_CR);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_GET_PARAMETERS);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_CREATE);
@@ -86,6 +94,22 @@ namespace vw {
 
             case VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS:
                 outputSurfaceGetParameters = reinterpret_cast<VdpOutputSurfaceGetParameters*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_SURFACE_CREATE:
+                videoSurfaceCreate = reinterpret_cast<VdpVideoSurfaceCreate*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_SURFACE_DESTROY:
+                videoSurfaceDestroy = reinterpret_cast<VdpVideoSurfaceDestroy*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_SURFACE_PUT_BITS_Y_CB_CR:
+                videoSurfacePutBitsYCbCr = reinterpret_cast<VdpVideoSurfacePutBitsYCbCr*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_SURFACE_GET_PARAMETERS:
+                videoSurfaceGetParameters = reinterpret_cast<VdpVideoSurfaceGetParameters*>(func);
                 break;
 
             case VDP_FUNC_ID_PRESENTATION_QUEUE_TARGET_CREATE_X11:

@@ -3,7 +3,7 @@
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/PresentationQueue.h>
-#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/SurfaceYUV.h>
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -14,15 +14,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vw::SizeU screenSize(1280, 720);
+    vw::SizeU screenSize(1920, 1080);
 
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::SurfaceRGBA surface(device, argv[1]);
+    vw::SurfaceYUV surface(device, argv[1], screenSize);
 
     while (display.isOpened()) {
-        presentationQueue.enqueue(surface);
         display.processEvent();
     }
 

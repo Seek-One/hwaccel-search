@@ -1,17 +1,12 @@
 #include <VdpWrapper/ImageBuffer.h>
 
 namespace vw {
-    ImageBuffer::ImageBuffer(cv::Mat &decodedImage, ImageFormat format)
-    : m_format(format) {
-        switch (format) {
-        case ImageFormat::BGRA:
-            storeBGRAImage(decodedImage);
-            break;
+    ImageBuffer::ImageBuffer(cv::Mat &decodedImage) {
+        storeBGRAImage(decodedImage);
+    }
 
-        default:
-            throw std::runtime_error("[ImageBuffer] Image format not yet supported");
-            break;
-        }
+    ImageBuffer::ImageBuffer(SizeU imageSize, const std::vector<uint8_t> &rawBytes) {
+        storeNV12Image(imageSize, rawBytes);
     }
 
     uint32_t ImageBuffer::getLineSize(uint32_t index) const {
@@ -29,7 +24,6 @@ namespace vw {
 
         return m_planes[index].data();
     }
-
 
     void ImageBuffer::storeBGRAImage(cv::Mat &decodedImage) {
         // Ensure we have a BGR 8bits format (without alpha)
@@ -54,5 +48,35 @@ namespace vw {
             m_planes[0][index + 2] = (*it)[2]; // Red
             m_planes[0][index + 3] = std::numeric_limits<uint8_t>::max(); // Alpha channel
         }
+    }
+
+    void ImageBuffer::storeNV12Image(SizeU imageSize, const std::vector<uint8_t> &rawBytes) {
+        // Check if there are enough bytes
+        assert(rawBytes.size() == imageSize.width * imageSize.height * 12 / 8);
+
+        // Set planes / sizes vectors
+        m_lineSizes.resize(2);
+        m_planes.resize(2);
+
+        // Set line size
+        m_lineSizes[0] = imageSize.width;
+        m_lineSizes[1] = imageSize.width;
+
+        // Fill Y values
+        unsigned i = 0;
+        unsigned bounds = imageSize.width * imageSize.height;
+        for (; i < bounds; ++i) {
+            m_planes[0].push_back(rawBytes[i]);
+        }
+
+        // Fill UV
+        bounds += imageSize.width * imageSize.height / 2;
+        for (; i < bounds; ++i) {
+            m_planes[1].push_back(rawBytes[i]);
+        }
+
+        assert(i == rawBytes.size());
+        assert(m_planes[0].size() == imageSize.width * imageSize.height);
+        assert(m_planes[1].size() == imageSize.width * imageSize.height / 2);
     }
 }
