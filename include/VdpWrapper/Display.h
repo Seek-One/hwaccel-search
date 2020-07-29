@@ -8,8 +8,7 @@
 namespace vw {
     class Display {
     public:
-        Display(int iWidth, int iHeight);
-        Display(SizeU &size);
+        Display(SizeI size);
         ~Display();
 
         Display(const Display&) = delete;
@@ -23,6 +22,8 @@ namespace vw {
 
         bool isOpened() const;
 
+        SizeI getScreenSize() const;
+
         void processEvent();
 
     private:
@@ -30,8 +31,7 @@ namespace vw {
         int m_iXScreen;
         ::Window m_XWindow;
         GC m_gc;
-        int m_iWidth;
-        int m_iHeight;
+        SizeI m_screenSize;
         bool m_bIsOpened;
         Atom m_windowDeleteMessage;
 

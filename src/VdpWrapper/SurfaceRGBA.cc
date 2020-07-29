@@ -13,13 +13,15 @@
 
 namespace vw {
     SurfaceRGBA::SurfaceRGBA(Device& device, const SizeU& size)
-    : m_vdpOutputSurface(VDP_INVALID_HANDLE)
+    : m_device(device)
+    , m_vdpOutputSurface(VDP_INVALID_HANDLE)
     , m_size(size) {
-        allocateVdpSurface(device, size);
+        allocateVdpSurface(m_device, size);
     }
 
     SurfaceRGBA::SurfaceRGBA(Device& device, const std::string& filename)
-    : m_vdpOutputSurface(VDP_INVALID_HANDLE)
+    : m_device(device)
+    , m_vdpOutputSurface(VDP_INVALID_HANDLE)
     , m_size({ 0u, 0u}) {
         // Load the image with openCV
         cv::Mat decompressedImage = cv::imread(filename);
@@ -30,7 +32,7 @@ namespace vw {
         // Create VdpSurface
         SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
         std::cout << "[SurfaceRGBA] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
-        allocateVdpSurface(device, imageSize);
+        allocateVdpSurface(m_device, imageSize);
 
         // Upload bytes to the surface
         const void* planes[1] = { buffer.getPlane(0) };
@@ -46,6 +48,18 @@ namespace vw {
 
     SurfaceRGBA::~SurfaceRGBA() {
         gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
+    }
+
+    void SurfaceRGBA::resize(SizeU newSize) {
+        if (m_size == newSize) {
+            return;
+        }
+        m_size = newSize;
+
+        auto vdpStatus = gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't destroy previous surface before resizing");
+
+        allocateVdpSurface(m_device, m_size);
     }
 
     void SurfaceRGBA::allocateVdpSurface(Device& device, const SizeU& size) {

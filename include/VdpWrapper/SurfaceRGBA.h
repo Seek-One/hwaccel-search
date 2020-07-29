@@ -22,10 +22,13 @@ namespace vw {
         SurfaceRGBA& operator=(const SurfaceRGBA&) = delete;
         SurfaceRGBA& operator=(SurfaceRGBA&&) = delete;
 
+        void resize(SizeU newSize);
+
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);
 
     private:
+        Device& m_device;
         VdpOutputSurface m_vdpOutputSurface;
         SizeU m_size;
 

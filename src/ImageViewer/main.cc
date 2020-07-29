@@ -16,19 +16,27 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vw::SizeU screenSize(1920, 1080);
+    vw::SizeU screenSize(1280, 720);
+    vw::SizeU sourceSize(1920, 1080);
 
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::SurfaceYUV inputSurface(device, argv[1], screenSize);
+    vw::SurfaceYUV inputSurface(device, argv[1], sourceSize);
     vw::SurfaceRGBA outputSurface(device, screenSize);
-    vw::VideoMixer mixer(device, screenSize);
+    vw::VideoMixer mixer(device, sourceSize);
+
+    // Render the first image
+    mixer.process(inputSurface, outputSurface);
+    presentationQueue.enqueue(outputSurface);
 
     while (display.isOpened()) {
+        display.processEvent();
+
+        // Update the output surface
+        outputSurface.resize(display.getScreenSize());
         mixer.process(inputSurface, outputSurface);
         presentationQueue.enqueue(outputSurface);
-        display.processEvent();
     }
 
     return 0;

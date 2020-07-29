@@ -1,13 +1,13 @@
 #include <VdpWrapper/Display.h>
 
+#include <iostream>
 #include <stdexcept>
 
 namespace vw {
-    Display::Display(int iWidth, int iHeight)
+    Display::Display(SizeI size)
     : m_pXDisplay(nullptr)
     , m_iXScreen(0)
-    , m_iWidth(iWidth)
-    , m_iHeight(iHeight)
+    , m_screenSize(size)
     , m_bIsOpened(false) {
         // Allocate the X display
         m_pXDisplay = XOpenDisplay(nullptr);
@@ -22,8 +22,8 @@ namespace vw {
             RootWindow(m_pXDisplay, m_iXScreen),
             0,
             0,
-            m_iWidth,
-            m_iHeight,
+            m_screenSize.width,
+            m_screenSize.height,
             0,
             iWhiteColor,
             iBlackColor
@@ -49,11 +49,6 @@ namespace vw {
         XSetWMProtocols(m_pXDisplay, m_XWindow, &m_windowDeleteMessage, 1);
     }
 
-    Display::Display(SizeU &size)
-    : Display(size.width, size.height) {
-
-    }
-
     Display::~Display() {
         XDestroyWindow(m_pXDisplay, m_XWindow);
         XCloseDisplay(m_pXDisplay);
@@ -71,6 +66,10 @@ namespace vw {
         return m_bIsOpened;
     }
 
+    SizeI Display::getScreenSize() const {
+        return m_screenSize;
+    }
+
     void Display::processEvent() {
         XEvent event;
         XNextEvent(m_pXDisplay, &event);
@@ -81,6 +80,18 @@ namespace vw {
                 m_bIsOpened = false;
             }
             break;
+
+        case ConfigureNotify: {
+            XConfigureEvent xce = event.xconfigure;
+            SizeI newScreenSize(xce.width, xce.height);
+
+            if (newScreenSize != m_screenSize) {
+                std::cout << "[Display] New screen size: " << newScreenSize.width << " x " << newScreenSize.height << std::endl;
+                m_screenSize = newScreenSize;
+            }
+
+            break;
+        }
 
         default:
             break;
