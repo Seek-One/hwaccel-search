@@ -25,6 +25,7 @@ namespace vw {
         friend class SurfaceYUV;
         friend class PresentationQueue;
         friend class VideoMixer;
+        friend class Decoder;
     };
 }
 

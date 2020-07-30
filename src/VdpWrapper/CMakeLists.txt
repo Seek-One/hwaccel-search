@@ -1,7 +1,9 @@
 add_library(vdp_wrapper_target STATIC
+    Decoder.cc
     Device.cc
     Display.cc
     ImageBuffer.cc
+    NalUnit.cc
     PresentationQueue.cc
     SurfaceRGBA.cc
     SurfaceYUV.cc

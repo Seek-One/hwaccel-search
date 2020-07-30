@@ -23,6 +23,8 @@ namespace vw {
 
         VdpGetInformationString* getInformationString;
         VdpDeviceDestroy* deviceDestroy;
+        VdpDecoderCreate* decoderCreate;
+        VdpDecoderDestroy* decoderDestroy;
         VdpOutputSurfaceCreate* outputSurfaceCreate;
         VdpOutputSurfaceDestroy* outputSurfaceDestroy;
         VdpOutputSurfacePutBitsNative* outputSurfacePutBitsNative;
@@ -41,6 +43,7 @@ namespace vw {
         VdpPresentationQueueSetBackgroundColor* presentationQueueSetBackgroundColor;
         VdpPresentationQueueGetTime* presentationQueueGetTime;
         VdpPresentationQueueDisplay* presentationQueueDisplay;
+
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);
