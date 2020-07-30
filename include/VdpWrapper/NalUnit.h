@@ -47,6 +47,7 @@ namespace vw {
 
         NalType getType() const;
         const H264Infos& getH264Infos() const;
+        const std::vector<uint8_t>& getBitstream() const;
 
     private:
         H264Infos m_h264Infos;

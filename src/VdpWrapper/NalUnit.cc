@@ -77,4 +77,8 @@ namespace vw {
     const H264Infos& NalUnit::getH264Infos() const {
         return m_h264Infos;
     }
+
+    const std::vector<uint8_t>& NalUnit::getBitstream() const {
+        return m_data;
+    }
 }

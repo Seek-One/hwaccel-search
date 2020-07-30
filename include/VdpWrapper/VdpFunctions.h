@@ -25,6 +25,7 @@ namespace vw {
         VdpDeviceDestroy* deviceDestroy;
         VdpDecoderCreate* decoderCreate;
         VdpDecoderDestroy* decoderDestroy;
+        VdpDecoderRender* decoderRender;
         VdpOutputSurfaceCreate* outputSurfaceCreate;
         VdpOutputSurfaceDestroy* outputSurfaceDestroy;
         VdpOutputSurfacePutBitsNative* outputSurfacePutBitsNative;

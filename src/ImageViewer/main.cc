@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     vw::PresentationQueue presentationQueue(display, device);
     vw::SurfaceYUV inputSurface(device, argv[1], sourceSize);
     vw::SurfaceRGBA outputSurface(device, screenSize);
-    vw::VideoMixer mixer(device, sourceSize);
+    vw::VideoMixer mixer(device);
 
     // Render the first image
     mixer.process(inputSurface, outputSurface);

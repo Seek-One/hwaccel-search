@@ -6,6 +6,7 @@
 namespace vw {
     class Device;
     class NalUnit;
+    class SurfaceYUV;
 
     class Decoder {
     public:
@@ -18,7 +19,7 @@ namespace vw {
         Decoder& operator=(const Decoder&) = delete;
         Decoder& operator=(Decoder&&) = delete;
 
-        void decode(const NalUnit& nal);
+        SurfaceYUV decode(const NalUnit& nal);
 
     private:
         Device& m_device;

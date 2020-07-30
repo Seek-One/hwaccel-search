@@ -8,9 +8,15 @@
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
-    SurfaceYUV::SurfaceYUV(Device& device, const std::string& filename, SizeU size)
+    SurfaceYUV::SurfaceYUV(Device& device, SizeU size)
     : m_vdpVideoSurface(VDP_INVALID_HANDLE)
     , m_size(size) {
+        std::cout << "[SurfaceYUV] Surface size: " << size.width << " x " << size.height << std::endl;
+        allocateVdpSurface(device, size);
+    }
+
+    SurfaceYUV::SurfaceYUV(Device& device, const std::string& filename, SizeU size)
+    : SurfaceYUV(device, size) {
         // Load raw bytes
         std::vector<uint8_t> rawBytes;
         std::ifstream file(filename, std::ios::binary);
@@ -19,10 +25,6 @@ namespace vw {
 
         // Create planes
         ImageBuffer buffer(size, rawBytes);
-
-        // Create VdpSurface
-        std::cout << "[SurfaceYUV] Surface size: " << size.width << " x " << size.height << std::endl;
-        allocateVdpSurface(device, size);
 
         // Upload bytes to the surface
         const void* planes[2] = { buffer.getPlane(0), buffer.getPlane(1) };
@@ -37,7 +39,19 @@ namespace vw {
     }
 
     SurfaceYUV::~SurfaceYUV() {
-        gVdpFunctionsInstance()->videoSurfaceDestroy(m_vdpVideoSurface);
+        if (m_vdpVideoSurface != VDP_INVALID_HANDLE) {
+            gVdpFunctionsInstance()->videoSurfaceDestroy(m_vdpVideoSurface);
+        }
+    }
+
+    SurfaceYUV::SurfaceYUV(SurfaceYUV&& other)
+    : m_vdpVideoSurface(std::exchange(other.m_vdpVideoSurface, VDP_INVALID_HANDLE))
+    , m_size(other.m_size) {
+
+    }
+
+    SizeU SurfaceYUV::getSize() const {
+        return m_size;
     }
 
     void SurfaceYUV::allocateVdpSurface(Device& device, const SizeU& size) {

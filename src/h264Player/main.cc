@@ -1,12 +1,19 @@
 #include <iostream>
+#include <thread>
 
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/Decoder.h>
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/NalUnit.h>
+#include <VdpWrapper/PresentationQueue.h>
 #include <VdpWrapper/Size.h>
+#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/VideoMixer.h>
 
 #include "local/H264Parser.h"
+
+using namespace std::chrono_literals;
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -21,6 +28,8 @@ int main(int argc, char *argv[]) {
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::Decoder decoder(device);
+    vw::PresentationQueue presentationQueue(display, device);
+    vw::VideoMixer mixer(device);
 
     H264Parser parser(argv[1]);
     vw::NalUnit nalUnit;
@@ -29,9 +38,17 @@ int main(int argc, char *argv[]) {
         switch (nalUnit.getType()) {
         case vw::NalType::SPS:
         case vw::NalType::PPS:
-        case vw::NalType::CodedSliceIDR:
-            decoder.decode(nalUnit);
+            // Nothing to do
             break;
+
+        case vw::NalType::CodedSliceIDR: {
+            vw::SurfaceYUV decodedSurface = decoder.decode(nalUnit);
+            vw::SurfaceRGBA outputSurface(device, display.getScreenSize());
+            mixer.process(decodedSurface, outputSurface);
+            presentationQueue.enqueue(outputSurface);
+            std::this_thread::sleep_for(666ms); // ~15 FPS
+            break;
+        }
 
         case vw::NalType::Unspecified:
             std::cerr << "[main] Unknown NAL type" << std::endl;

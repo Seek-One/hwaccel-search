@@ -11,6 +11,7 @@ namespace vw {
     , deviceDestroy(nullptr)
     , decoderCreate(nullptr)
     , decoderDestroy(nullptr)
+    , decoderRender(nullptr)
     , outputSurfaceCreate(nullptr)
     , outputSurfaceDestroy(nullptr)
     , outputSurfacePutBitsNative(nullptr)
@@ -33,9 +34,10 @@ namespace vw {
     , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_ERROR_STRING);
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_INFORMATION_STRING);
+        storeFunction(vdpDevice, VDP_FUNC_ID_DEVICE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_DECODER_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_DECODER_DESTROY);
-        storeFunction(vdpDevice, VDP_FUNC_ID_DEVICE_DESTROY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_DECODER_RENDER);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE);
@@ -96,6 +98,10 @@ namespace vw {
 
             case VDP_FUNC_ID_DECODER_DESTROY:
                 decoderDestroy = reinterpret_cast<VdpDecoderDestroy*>(func);
+                break;
+
+            case VDP_FUNC_ID_DECODER_RENDER:
+                decoderRender = reinterpret_cast<VdpDecoderRender*>(func);
                 break;
 
             case VDP_FUNC_ID_OUTPUT_SURFACE_CREATE:

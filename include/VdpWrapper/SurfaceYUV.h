@@ -11,14 +11,17 @@
 namespace vw {
     class SurfaceYUV {
     public:
+        SurfaceYUV(Device& device, SizeU size);
         SurfaceYUV(Device& device, const std::string& filename, SizeU size);
         ~SurfaceYUV();
 
         SurfaceYUV(const SurfaceYUV&) = delete;
-        SurfaceYUV(SurfaceYUV&&) = delete;
+        SurfaceYUV(SurfaceYUV&& other);
 
         SurfaceYUV& operator=(const SurfaceYUV&) = delete;
         SurfaceYUV& operator=(SurfaceYUV&&) = delete;
+
+        SizeU getSize() const;
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);
@@ -28,6 +31,7 @@ namespace vw {
         SizeU m_size;
 
     private:
+        friend class Decoder;
         friend class VideoMixer;
     };
 }
