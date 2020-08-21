@@ -1,4 +1,5 @@
 add_library(vdp_wrapper_target STATIC
+    DecodedPictureBuffer.cc
     Decoder.cc
     Device.cc
     Display.cc
@@ -35,9 +36,6 @@ target_link_libraries(vdp_wrapper_target
 # Change the output name from "lib${LOCAL_PROJECT_NAMESPACE}_target.a" to "lib${LOCAL_PROJECT_OUTPUT_NAME}.a"
 set_target_properties(vdp_wrapper_target PROPERTIES
     OUTPUT_NAME ${LOCAL_PROJECT_OUTPUT_NAME}
-    CXX_STANDARD 14
-    CMAKE_CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
 )
 
 target_include_directories(vdp_wrapper_target

@@ -27,9 +27,6 @@ add_library(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS h264bitstrea
 # Change the output name from "lib${LOCAL_PROJECT_NAMESPACE}_target.a" to "lib${LOCAL_PROJECT_OUTPUT_NAME}.a"
 set_target_properties(h264bitstream_target PROPERTIES
     OUTPUT_NAME ${LOCAL_PROJECT_OUTPUT_NAME}
-    C_STANDARD 99
-    CMAKE_C_STANDARD_REQUIRED ON
-    C_EXTENSIONS OFF
 )
 
 target_include_directories(h264bitstream_target
