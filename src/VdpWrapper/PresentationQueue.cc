@@ -3,7 +3,7 @@
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/VdpFunctions.h>
-#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/RenderSurface.h>
 
 namespace vw {
     PresentationQueue::PresentationQueue(Display& display, Device &device) {
@@ -41,7 +41,7 @@ namespace vw {
     }
 
 
-    bool PresentationQueue::enqueue(SurfaceRGBA &surface) {
+    bool PresentationQueue::enqueue(RenderSurface &surface) {
         VdpTime currentTime = 0;
         VdpStatus vdpStatus = gVdpFunctionsInstance()->presentationQueueGetTime(
             m_vdpQueue,

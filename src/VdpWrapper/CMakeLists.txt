@@ -1,13 +1,13 @@
 add_library(vdp_wrapper_target STATIC
     DecodedPictureBuffer.cc
+    DecodedSurface.cc
     Decoder.cc
     Device.cc
     Display.cc
     ImageBuffer.cc
     NalUnit.cc
     PresentationQueue.cc
-    SurfaceRGBA.cc
-    SurfaceYUV.cc
+    RenderSurface.cc
     VdpFunctions.cc
     VideoMixer.cc
 )

@@ -7,8 +7,8 @@
 
 namespace vw {
     class Device;
-    class SurfaceRGBA;
-    class SurfaceYUV;
+    class RenderSurface;
+    class DecodedSurface;
 
     class VideoMixer {
     public:
@@ -21,7 +21,7 @@ namespace vw {
         VideoMixer& operator=(const VideoMixer&) = delete;
         VideoMixer& operator=(VideoMixer&&) = delete;
 
-        void process(SurfaceYUV &inputSurface, SurfaceRGBA &outputSurface);
+        void process(DecodedSurface &inputSurface, RenderSurface &outputSurface);
 
     private:
         void createMixer(SizeU size);

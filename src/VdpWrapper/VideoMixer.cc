@@ -1,8 +1,8 @@
 #include <VdpWrapper/VideoMixer.h>
 
 #include <VdpWrapper/Device.h>
-#include <VdpWrapper/SurfaceRGBA.h>
-#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/RenderSurface.h>
+#include <VdpWrapper/DecodedSurface.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
@@ -18,7 +18,7 @@ namespace vw {
         }
     }
 
-    void VideoMixer::process(SurfaceYUV &inputSurface, SurfaceRGBA &outputSurface) {
+    void VideoMixer::process(DecodedSurface &inputSurface, RenderSurface &outputSurface) {
         if (m_mixer == VDP_INVALID_HANDLE) {
             createMixer(inputSurface.getSize());
         }

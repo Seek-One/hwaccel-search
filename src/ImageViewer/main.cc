@@ -3,8 +3,8 @@
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/PresentationQueue.h>
-#include <VdpWrapper/SurfaceRGBA.h>
-#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/RenderSurface.h>
+#include <VdpWrapper/DecodedSurface.h>
 #include <VdpWrapper/VideoMixer.h>
 
 int main(int argc, char *argv[]) {
@@ -22,8 +22,8 @@ int main(int argc, char *argv[]) {
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::SurfaceYUV inputSurface(device, argv[1], sourceSize);
-    vw::SurfaceRGBA outputSurface(device, screenSize);
+    vw::DecodedSurface inputSurface(device, argv[1], sourceSize);
+    vw::RenderSurface outputSurface(device, screenSize);
     vw::VideoMixer mixer(device);
 
     // Render the first image

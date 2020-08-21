@@ -7,7 +7,7 @@
 #include <vdpau/vdpau_x11.h>
 
 #include <VdpWrapper/Display.h>
-#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/RenderSurface.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {

@@ -1,4 +1,4 @@
-#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/DecodedSurface.h>
 
 #include <fstream>
 #include <iostream>
@@ -8,15 +8,15 @@
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
-    SurfaceYUV::SurfaceYUV(Device& device, SizeU size)
+    DecodedSurface::DecodedSurface(Device& device, SizeU size)
     : m_vdpVideoSurface(VDP_INVALID_HANDLE)
     , m_size(size) {
-        std::cout << "[SurfaceYUV] Surface size: " << size.width << " x " << size.height << std::endl;
+        std::cout << "[DecodedSurface] Surface size: " << size.width << " x " << size.height << std::endl;
         allocateVdpSurface(device, size);
     }
 
-    SurfaceYUV::SurfaceYUV(Device& device, const std::string& filename, SizeU size)
-    : SurfaceYUV(device, size) {
+    DecodedSurface::DecodedSurface(Device& device, const std::string& filename, SizeU size)
+    : DecodedSurface(device, size) {
         // Load raw bytes
         std::vector<uint8_t> rawBytes;
         std::ifstream file(filename, std::ios::binary);
@@ -35,37 +35,37 @@ namespace vw {
             planes,
             lineSize
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceYUV] Couldn't upload bytes from source image");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[DecodedSurface] Couldn't upload bytes from source image");
     }
 
-    SurfaceYUV::~SurfaceYUV() {
+    DecodedSurface::~DecodedSurface() {
         if (m_vdpVideoSurface != VDP_INVALID_HANDLE) {
             gVdpFunctionsInstance()->videoSurfaceDestroy(m_vdpVideoSurface);
         }
     }
 
-    SurfaceYUV::SurfaceYUV(SurfaceYUV&& other)
+    DecodedSurface::DecodedSurface(DecodedSurface&& other)
     : m_vdpVideoSurface(std::exchange(other.m_vdpVideoSurface, VDP_INVALID_HANDLE))
     , m_size(std::exchange(other.m_size, 0)) {
 
     }
 
-    SurfaceYUV& SurfaceYUV::operator=(SurfaceYUV&& other) {
+    DecodedSurface& DecodedSurface::operator=(DecodedSurface&& other) {
         std::swap(m_vdpVideoSurface, other.m_vdpVideoSurface);
         std::swap(m_size, other.m_size);
 
         return *this;
     }
 
-    SizeU SurfaceYUV::getSize() const {
+    SizeU DecodedSurface::getSize() const {
         return m_size;
     }
 
-    VdpVideoSurface SurfaceYUV::getVdpHandle() const {
+    VdpVideoSurface DecodedSurface::getVdpHandle() const {
         return m_vdpVideoSurface;
     }
 
-    void SurfaceYUV::allocateVdpSurface(Device& device, const SizeU& size) {
+    void DecodedSurface::allocateVdpSurface(Device& device, const SizeU& size) {
         // Update the surface size
         m_size = size;
 
@@ -76,7 +76,7 @@ namespace vw {
             size.height,
             &m_vdpVideoSurface
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceYUV] Couldn't create an video surface");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[DecodedSurface] Couldn't create an video surface");
 
         SizeU realSize;
         VdpYCbCrFormat format;
@@ -86,11 +86,11 @@ namespace vw {
             &realSize.width,
             &realSize.height
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceYUV] Couldn't retreive surface informations");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[DecodedSurface] Couldn't retreive surface informations");
 
         assert(format == VDP_YCBCR_FORMAT_NV12);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
-        std::cout << "[SurfaceYUV] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
+        std::cout << "[DecodedSurface] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
     }
 }

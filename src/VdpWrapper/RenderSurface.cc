@@ -1,4 +1,4 @@
-#include <VdpWrapper/SurfaceRGBA.h>
+#include <VdpWrapper/RenderSurface.h>
 
 #include <array>
 #include <fstream>
@@ -12,14 +12,14 @@
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
-    SurfaceRGBA::SurfaceRGBA(Device& device, const SizeU& size)
+    RenderSurface::RenderSurface(Device& device, const SizeU& size)
     : m_device(device)
     , m_vdpOutputSurface(VDP_INVALID_HANDLE)
     , m_size(size) {
         allocateVdpSurface(m_device, size);
     }
 
-    SurfaceRGBA::SurfaceRGBA(Device& device, const std::string& filename)
+    RenderSurface::RenderSurface(Device& device, const std::string& filename)
     : m_device(device)
     , m_vdpOutputSurface(VDP_INVALID_HANDLE)
     , m_size({ 0u, 0u}) {
@@ -31,7 +31,7 @@ namespace vw {
 
         // Create VdpSurface
         SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
-        std::cout << "[SurfaceRGBA] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
+        std::cout << "[RenderSurface] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
         allocateVdpSurface(m_device, imageSize);
 
         // Upload bytes to the surface
@@ -43,30 +43,30 @@ namespace vw {
             lineSize,
             nullptr // Update all the surface
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't upload bytes from source image");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't upload bytes from source image");
     }
 
-    SurfaceRGBA::~SurfaceRGBA() {
+    RenderSurface::~RenderSurface() {
         gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
     }
 
-    VdpOutputSurface SurfaceRGBA::getVdpHandle() const {
+    VdpOutputSurface RenderSurface::getVdpHandle() const {
         return m_vdpOutputSurface;
     }
 
-    void SurfaceRGBA::resize(SizeU newSize) {
+    void RenderSurface::resize(SizeU newSize) {
         if (m_size == newSize) {
             return;
         }
         m_size = newSize;
 
         auto vdpStatus = gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't destroy previous surface before resizing");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't destroy previous surface before resizing");
 
         allocateVdpSurface(m_device, m_size);
     }
 
-    void SurfaceRGBA::allocateVdpSurface(Device& device, const SizeU& size) {
+    void RenderSurface::allocateVdpSurface(Device& device, const SizeU& size) {
         // Update the surface size
         m_size = size;
 
@@ -77,7 +77,7 @@ namespace vw {
             size.height,
             &m_vdpOutputSurface
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't create an output surface");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't create an output surface");
 
         SizeU realSize;
         VdpRGBAFormat format;
@@ -87,11 +87,11 @@ namespace vw {
             &realSize.width,
             &realSize.height
         );
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[SurfaceRGBA] Couldn't retreive surface informations");
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't retreive surface informations");
 
         assert(format == VDP_RGBA_FORMAT_B8G8R8A8);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
-        std::cout << "[SurfaceRGBA] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
+        std::cout << "[RenderSurface] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
     }
 }

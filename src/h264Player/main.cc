@@ -7,8 +7,8 @@
 #include <VdpWrapper/NalUnit.h>
 #include <VdpWrapper/PresentationQueue.h>
 #include <VdpWrapper/Size.h>
-#include <VdpWrapper/SurfaceRGBA.h>
-#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/RenderSurface.h>
+#include <VdpWrapper/DecodedSurface.h>
 #include <VdpWrapper/VideoMixer.h>
 
 #include "local/H264Parser.h"
@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
 
         case vw::NalType::CodedSliceNonIDR:
         case vw::NalType::CodedSliceIDR: {
-            vw::SurfaceYUV& decodedSurface = decoder.decode(nalUnit);
-            vw::SurfaceRGBA outputSurface(device, display.getScreenSize());
+            vw::DecodedSurface& decodedSurface = decoder.decode(nalUnit);
+            vw::RenderSurface outputSurface(device, display.getScreenSize());
             mixer.process(decodedSurface, outputSurface);
             presentationQueue.enqueue(outputSurface);
             // std::this_thread::sleep_for(66ms); // ~15 FPS

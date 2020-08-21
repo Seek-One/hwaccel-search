@@ -4,7 +4,7 @@
 
 #include <VdpWrapper/Device.h>
 #include <VdpWrapper/NalUnit.h>
-#include <VdpWrapper/SurfaceYUV.h>
+#include <VdpWrapper/DecodedSurface.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace {
@@ -43,7 +43,7 @@ namespace vw {
         }
     }
 
-    SurfaceYUV& Decoder::decode(const NalUnit &nal) {
+    DecodedSurface& Decoder::decode(const NalUnit &nal) {
         if (nal.getType() != NalType::CodedSliceIDR && nal.getType() != NalType::CodedSliceNonIDR) {
             throw std::runtime_error("[Decoder] The nal to be decoded must be a coded slice");
         }

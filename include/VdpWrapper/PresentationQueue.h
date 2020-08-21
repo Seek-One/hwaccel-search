@@ -6,7 +6,7 @@
 namespace vw {
     class Device;
     class Display;
-    class SurfaceRGBA;
+    class RenderSurface;
 
     class PresentationQueue {
     public:
@@ -19,7 +19,7 @@ namespace vw {
         PresentationQueue& operator=(const PresentationQueue&) = delete;
         PresentationQueue& operator=(PresentationQueue&&) = delete;
 
-        bool enqueue(SurfaceRGBA &surface);
+        bool enqueue(RenderSurface &surface);
 
     private:
         VdpPresentationQueueTarget m_vdpQueueTarget;

@@ -5,7 +5,7 @@
 
 #include "NalUnit.h"
 #include "Size.h"
-#include "SurfaceYUV.h"
+#include "DecodedSurface.h"
 
 
 namespace vw {
@@ -15,7 +15,7 @@ namespace vw {
         DecodedPicture(Device& device, SizeI surfaceSize, NalReferenceType referenceType, int iFrameNum);
 
         NalReferenceType referenceType;
-        SurfaceYUV surface;
+        DecodedSurface surface;
         int iFrameNum;
     };
 
