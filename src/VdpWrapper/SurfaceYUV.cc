@@ -70,7 +70,7 @@ namespace vw {
         m_size = size;
 
         auto vdpStatus = gVdpFunctionsInstance()->videoSurfaceCreate(
-            device.m_VdpDevice,
+            device.getVdpHandle(),
             VDP_YCBCR_FORMAT_NV12,
             size.width,
             size.height,

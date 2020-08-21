@@ -43,7 +43,7 @@ namespace vw {
             nullptr,
 
             nullptr, // Work on the entire surface
-            outputSurface.m_vdpOutputSurface,
+            outputSurface.getVdpHandle(),
 
             // Render on the entire sufrace
             nullptr,
@@ -68,7 +68,7 @@ namespace vw {
         };
 
         VdpStatus vdpStatus = gVdpFunctionsInstance()->videoMixerCreate(
-            m_device.m_VdpDevice,
+            m_device.getVdpHandle(),
             0, // No features
             nullptr,
             2,

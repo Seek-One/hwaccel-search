@@ -19,6 +19,7 @@ namespace vw {
 
         ::Display* getXDisplay();
         int getXScreen() const;
+        ::Window getXWindow() const;
 
         bool isOpened() const;
 
@@ -34,9 +35,6 @@ namespace vw {
         SizeI m_screenSize;
         bool m_bIsOpened;
         Atom m_windowDeleteMessage;
-
-    private:
-        friend class PresentationQueue;
     };
 }
 

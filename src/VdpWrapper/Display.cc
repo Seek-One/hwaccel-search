@@ -62,6 +62,10 @@ namespace vw {
         return m_iXScreen;
     }
 
+    ::Window Display::getXWindow() const {
+        return m_XWindow;
+    }
+
     bool Display::isOpened() const {
         return m_bIsOpened;
     }

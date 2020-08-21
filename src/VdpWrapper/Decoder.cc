@@ -60,7 +60,7 @@ namespace vw {
         if (m_decoder == VDP_INVALID_HANDLE) {
             VdpDecoderProfile profile = convertBitstreamProfileToVdpProfile(infos.iProfile);
             auto vdpStatus = gVdpFunctionsInstance()->decoderCreate(
-                m_device.m_VdpDevice,
+                m_device.getVdpHandle(),
                 profile,
                 infos.videoSize.width,
                 infos.videoSize.height,

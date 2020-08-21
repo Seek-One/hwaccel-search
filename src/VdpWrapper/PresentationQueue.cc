@@ -8,14 +8,14 @@
 namespace vw {
     PresentationQueue::PresentationQueue(Display& display, Device &device) {
         VdpStatus vdpStatus = gVdpFunctionsInstance()->presentationQueueTargetCreateX11(
-            device.m_VdpDevice,
-            display.m_XWindow,
+            device.getVdpHandle(),
+            display.getXWindow(),
             &m_vdpQueueTarget
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't create the queue target");
 
         vdpStatus = gVdpFunctionsInstance()->presentationQueueCreate(
-            device.m_VdpDevice,
+            device.getVdpHandle(),
             m_vdpQueueTarget,
             &m_vdpQueue
         );
@@ -51,7 +51,7 @@ namespace vw {
 
         vdpStatus = gVdpFunctionsInstance()->presentationQueueDisplay(
             m_vdpQueue,
-            surface.m_vdpOutputSurface,
+            surface.getVdpHandle(),
             0,
             0,
             currentTime

@@ -17,15 +17,10 @@ namespace vw {
         Device& operator=(const Device&) = delete;
         Device& operator=(Device&&) = delete;
 
-    private:
-        VdpDevice m_VdpDevice;
+        VdpDevice getVdpHandle() const;
 
     private:
-        friend class SurfaceRGBA;
-        friend class SurfaceYUV;
-        friend class PresentationQueue;
-        friend class VideoMixer;
-        friend class Decoder;
+        VdpDevice m_VdpDevice;
     };
 }
 

@@ -39,4 +39,8 @@ namespace vw {
         gVdpFunctionsInstance()->deviceDestroy(m_VdpDevice);
         gVdpFunctionsInstance.dispose();
     }
+
+    VdpDevice Device::getVdpHandle() const {
+        return m_VdpDevice;
+    }
 }

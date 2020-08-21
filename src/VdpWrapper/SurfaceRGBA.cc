@@ -50,6 +50,10 @@ namespace vw {
         gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
     }
 
+    VdpOutputSurface SurfaceRGBA::getVdpHandle() const {
+        return m_vdpOutputSurface;
+    }
+
     void SurfaceRGBA::resize(SizeU newSize) {
         if (m_size == newSize) {
             return;
@@ -67,7 +71,7 @@ namespace vw {
         m_size = size;
 
         auto vdpStatus = gVdpFunctionsInstance()->outputSurfaceCreate(
-            device.m_VdpDevice,
+            device.getVdpHandle(),
             VDP_RGBA_FORMAT_B8G8R8A8,
             size.width,
             size.height,

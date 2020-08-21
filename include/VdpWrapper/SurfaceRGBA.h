@@ -22,6 +22,8 @@ namespace vw {
         SurfaceRGBA& operator=(const SurfaceRGBA&) = delete;
         SurfaceRGBA& operator=(SurfaceRGBA&&) = delete;
 
+        VdpOutputSurface getVdpHandle() const;
+
         void resize(SizeU newSize);
 
     private:
@@ -31,10 +33,6 @@ namespace vw {
         Device& m_device;
         VdpOutputSurface m_vdpOutputSurface;
         SizeU m_size;
-
-    private:
-        friend class PresentationQueue;
-        friend class VideoMixer;
     };
 }
 
