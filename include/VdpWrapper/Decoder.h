@@ -3,6 +3,8 @@
 
 #include <vdpau/vdpau.h>
 
+#include "DecodedPictureBuffer.h"
+
 namespace vw {
     class Device;
     class NalUnit;
@@ -19,11 +21,12 @@ namespace vw {
         Decoder& operator=(const Decoder&) = delete;
         Decoder& operator=(Decoder&&) = delete;
 
-        SurfaceYUV decode(const NalUnit& nal);
+        SurfaceYUV& decode(const NalUnit& nal);
 
     private:
         Device& m_device;
         VdpDecoder m_decoder;
+        DecodedPictureBuffer m_decodedPicturesBuffer;
     };
 }
 

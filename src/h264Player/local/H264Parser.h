@@ -27,6 +27,8 @@ private:
     int computeSubHeightC() const;
     void computeVideoSize();
 
+    void computePoc();
+
 private:
     h264_stream_t* m_h264Stream;
     vw::H264Infos m_h264Infos;
@@ -34,6 +36,10 @@ private:
     uint8_t* m_pDataCursor;
     int m_unprocessedDataSize;
 
+    // Picture Order Count
+    // 8.2.1.1
+    int32_t m_prevPicOrderCntMsb; // Maybe uint16_t?
+    int32_t m_prevPicOrderCntLsb; // Maybe uint16_t?
 };
 
 #endif // LOCAL_H264_PARSER_H

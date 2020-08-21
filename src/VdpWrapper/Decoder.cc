@@ -43,8 +43,8 @@ namespace vw {
         }
     }
 
-    SurfaceYUV Decoder::decode(const NalUnit &nal) {
-        if (nal.getType() != NalType::CodedSliceIDR) {
+    SurfaceYUV& Decoder::decode(const NalUnit &nal) {
+        if (nal.getType() != NalType::CodedSliceIDR && nal.getType() != NalType::CodedSliceNonIDR) {
             throw std::runtime_error("[Decoder] The nal to be decoded must be a coded slice");
         }
 
@@ -70,21 +70,32 @@ namespace vw {
             gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[Decoder] Couldn't create the decoder");
         }
 
-        SurfaceYUV decodedSurface(m_device, infos.videoSize);
+        // If it's new IDR frame, we can recreate the DPB
+        if (nal.getType() == NalType::CodedSliceIDR) {
+            m_decodedPicturesBuffer.clear();
+        }
+
+        // Add the last decoded picture
+        auto& newDecodedPicture = m_decodedPicturesBuffer.createDecodedPicture(m_device, infos.videoSize, infos.referenceType, infos.frame_num);
+
         VdpBitstreamBuffer bitstreams[1];
         bitstreams[0].struct_version = VDP_BITSTREAM_BUFFER_VERSION;
         bitstreams[0].bitstream = nal.getBitstream().data();
         bitstreams[0].bitstream_bytes = nal.getBitstream().size();
 
+        // Update the VdpInfos to set the references frames
+        H264Infos infosUpdated = infos;
+        m_decodedPicturesBuffer.updateReferenceList(infosUpdated);
+
         auto vdpStatus = gVdpFunctionsInstance()->decoderRender(
             m_decoder,
-            decodedSurface.m_vdpVideoSurface,
-            &infos,
+            newDecodedPicture.surface.getVdpHandle(),
+            &infosUpdated,
             1,
             bitstreams
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[Decoder] Couldn't decode the picture");
 
-        return std::move(decodedSurface);
+        return newDecodedPicture.surface;
     }
 }

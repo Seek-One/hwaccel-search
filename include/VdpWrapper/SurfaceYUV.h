@@ -19,9 +19,10 @@ namespace vw {
         SurfaceYUV(SurfaceYUV&& other);
 
         SurfaceYUV& operator=(const SurfaceYUV&) = delete;
-        SurfaceYUV& operator=(SurfaceYUV&&) = delete;
+        SurfaceYUV& operator=(SurfaceYUV&& other);
 
         SizeU getSize() const;
+        VdpVideoSurface getVdpHandle() const;
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);
@@ -29,10 +30,6 @@ namespace vw {
     private:
         VdpVideoSurface m_vdpVideoSurface;
         SizeU m_size;
-
-    private:
-        friend class Decoder;
-        friend class VideoMixer;
     };
 }
 

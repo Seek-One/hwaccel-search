@@ -46,12 +46,23 @@ namespace vw {
 
     SurfaceYUV::SurfaceYUV(SurfaceYUV&& other)
     : m_vdpVideoSurface(std::exchange(other.m_vdpVideoSurface, VDP_INVALID_HANDLE))
-    , m_size(other.m_size) {
+    , m_size(std::exchange(other.m_size, 0)) {
 
+    }
+
+    SurfaceYUV& SurfaceYUV::operator=(SurfaceYUV&& other) {
+        std::swap(m_vdpVideoSurface, other.m_vdpVideoSurface);
+        std::swap(m_size, other.m_size);
+
+        return *this;
     }
 
     SizeU SurfaceYUV::getSize() const {
         return m_size;
+    }
+
+    VdpVideoSurface SurfaceYUV::getVdpHandle() const {
+        return m_vdpVideoSurface;
     }
 
     void SurfaceYUV::allocateVdpSurface(Device& device, const SizeU& size) {

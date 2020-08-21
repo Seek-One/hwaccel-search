@@ -41,12 +41,15 @@ int main(int argc, char *argv[]) {
             // Nothing to do
             break;
 
+        case vw::NalType::CodedSliceNonIDR:
         case vw::NalType::CodedSliceIDR: {
-            vw::SurfaceYUV decodedSurface = decoder.decode(nalUnit);
+            vw::SurfaceYUV& decodedSurface = decoder.decode(nalUnit);
             vw::SurfaceRGBA outputSurface(device, display.getScreenSize());
             mixer.process(decodedSurface, outputSurface);
             presentationQueue.enqueue(outputSurface);
-            std::this_thread::sleep_for(666ms); // ~15 FPS
+            // std::this_thread::sleep_for(66ms); // ~15 FPS
+            std::this_thread::sleep_for(42ms); // ~24 FPS
+            // std::this_thread::sleep_for(500ms); // debug
             break;
         }
 

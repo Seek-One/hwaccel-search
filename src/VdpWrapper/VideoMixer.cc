@@ -36,7 +36,7 @@ namespace vw {
             nullptr,
 
             // Current frame
-            inputSurface.m_vdpVideoSurface,
+            inputSurface.getVdpHandle(),
 
             // Future surfaces
             0, // No future surfaces

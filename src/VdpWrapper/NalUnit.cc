@@ -46,6 +46,7 @@ namespace vw {
 
         for (int i = 0; i < 16; ++i) {
             referenceFrames[i].surface = VDP_INVALID_HANDLE;
+            referenceFrames[i].is_long_term = VDP_FALSE;
             referenceFrames[i].top_is_reference = VDP_FALSE;
             referenceFrames[i].bottom_is_reference = VDP_FALSE;
             referenceFrames[i].field_order_cnt[0] = 0;
@@ -56,6 +57,19 @@ namespace vw {
         bFirstSPSReceived = false;
         bFirstPPSReceived = false;
         iProfile = 0;
+        referenceType = NalReferenceType::NoReference;
+    }
+
+    PictureOrderCount::PictureOrderCount()
+    : prevPicOrderCnt({0, 0})
+    , prevFrameNum(0)
+    , prevFrameNumOffset(0)
+    , prevRefPictureTFOC(0)
+    , prevRefPictureIsBottomField(0)
+    , iPictureOrderCount(0)
+    , iTopFieldOrderCount(0)
+    , iBottomFieldOrderCount(0){
+
     }
 
     NalUnit::NalUnit()
