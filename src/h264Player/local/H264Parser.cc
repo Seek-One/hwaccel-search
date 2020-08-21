@@ -128,25 +128,31 @@ void H264Parser::updateH264Infos() {
         std::cout << "[H264Parser] New IDR" << std::endl;
         [[fallthrough]];
     case vw::NalType::CodedSliceNonIDR:
-        // if (nalType == vw::NalType::CodedSliceIDR) {
-        //     std::cout << "[H264Parser] New IDR" << std::endl;
-        // }
-        // if (m_h264Stream->nal->nal_ref_idc) {
-        //     std::cout << "[H264Parser] is a reference" << std::endl;
-        // } else {
-        //     std::cout << "[H264Parser] is not a reference" << std::endl;
-        // }
-        // if (m_h264Stream->sh->drpm.long_term_reference_flag) {
-        //     std::cout << "[H264Parser] is a long term reference" << std::endl;
-        // } else {
-        //     std::cout << "[H264Parser] is a short term reference" << std::endl;
-        // }
-        // std::cout << "[H264Parser] LongTermFrameIdx = " << m_h264Stream->sh->drpm.long_term_frame_idx[0] << std::endl;
-        // std::cout << "[H264Parser] adaptive_ref_pic_marking_mode_flag = " << m_h264Stream->sh->drpm.adaptive_ref_pic_marking_mode_flag << std::endl;
-        // std::cout << "[H264Parser] field_pic_flag = " << m_h264Stream->sh->field_pic_flag << std::endl;
-        // std::cout << "[H264Parser] bottom_field_flag = " << m_h264Stream->sh->bottom_field_flag << std::endl;
-        // std::cout << "[H264Parser] memory_management_control_operation = " << m_h264Stream->sh->drpm.memory_management_control_operation[0] << std::endl;
-        // m_h264Infos.is_reference = (nalType == vw::NalType::CodedSliceIDR) ? VDP_TRUE : VDP_FALSE;
+        m_h264Infos.sliceType = vw::getSliceType(m_h264Stream->sh->slice_type);
+        switch (m_h264Infos.sliceType) {
+        case vw::SliceType::B:
+        case vw::SliceType::SP:
+        case vw::SliceType::SI:
+            throw std::runtime_error("[H264Parser] Slice type '" + vw::sliceToString(m_h264Infos.sliceType) + "' no handled");
+
+        default:
+            break;
+        }
+
+        if (m_h264Stream->sh->drpm.long_term_reference_flag) {
+            throw std::runtime_error("[H264Parser] Long term reference no handled");
+        }
+
+        if (m_h264Stream->sh->drpm.adaptive_ref_pic_marking_mode_flag) {
+            if (m_h264Stream->sh->drpm.memory_management_control_operation[0] == 4 && m_h264Stream->sh->drpm.max_long_term_frame_idx_plus1[0] == 1) {
+                std::cout << "[H264Parser] Delete all long term references but they are not handled so ignore the command" << std::endl;
+            } else if (m_h264Stream->sh->drpm.memory_management_control_operation[0] == 5) {
+                std::cout << "[H264Parser] Delete all references, no yet implemented" << std::endl;
+            }else {
+                throw std::runtime_error("[H264Parser] adaptive_ref_pic_marking_mode_flag mode no handled");
+            }
+        }
+
         if (m_h264Stream->nal->nal_ref_idc) {
             if (m_h264Stream->sh->field_pic_flag && !m_h264Stream->sh->bottom_field_flag) {
                 m_h264Infos.referenceType = vw::NalReferenceType::TopReference;

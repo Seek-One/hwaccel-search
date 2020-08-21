@@ -2,6 +2,8 @@
 #define VW_NAL_UNIT_H
 
 #include <vector>
+#include <stdexcept>
+#include <string>
 
 #include <vdpau/vdpau.h>
 
@@ -37,6 +39,62 @@ namespace vw {
         FrameReference                = TopReference | BottomReference,
     };
 
+    enum class SliceType {
+        P,
+        B,
+        I,
+        SP,
+        SI,
+    };
+
+    inline constexpr SliceType getSliceType(int value) {
+        switch(value) {
+        case 0:
+        case 5:
+            return SliceType::P;
+
+        case 1:
+        case 6:
+            return SliceType::B;
+
+        case 2:
+        case 7:
+            return SliceType::I;
+
+        case 3:
+        case 8:
+            return SliceType::SP;
+
+        case 4:
+        case 9:
+            return SliceType::SI;
+
+        default:
+            throw std::runtime_error("[SliceType] Unkown slice type");
+        }
+    }
+
+    inline std::string sliceToString(SliceType sliceType) {
+        switch (sliceType) {
+        case SliceType::P:
+            return "P slice";
+
+        case SliceType::B:
+            return "B slice";
+
+        case SliceType::I:
+            return "I slice";
+
+        case SliceType::SP:
+            return "SP slice";
+
+        case SliceType::SI:
+            return "SI slice";
+        }
+
+        return "";
+    }
+
     struct PictureOrderCount {
         PictureOrderCount();
 
@@ -59,14 +117,20 @@ namespace vw {
     struct H264Infos : public VdpPictureInfoH264 {
         H264Infos();
 
-        PictureOrderCount poc;
+        // For decoder creation
+        int iProfile;
 
+        // For surfaces creation
+        vw::SizeU videoSize;
+
+        // For decoding process
         bool bFirstSPSReceived;
         bool bFirstPPSReceived;
-
-        vw::SizeU videoSize;
-        int iProfile;
+        PictureOrderCount poc;
         NalReferenceType referenceType;
+
+        // For DecodedPicuterBuffer management
+        SliceType sliceType;
     };
 
     class NalUnit {

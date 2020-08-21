@@ -2,6 +2,7 @@
 
 namespace vw {
     H264Infos::H264Infos() {
+        // VdpPictureInfoH264 fields
         slice_count = 0;
         field_order_cnt[0] = 0;
         field_order_cnt[1] = 0;
@@ -54,9 +55,11 @@ namespace vw {
             referenceFrames[i].frame_idx = 0;
         }
 
+        // Extra fields
+        iProfile = 0;
+
         bFirstSPSReceived = false;
         bFirstPPSReceived = false;
-        iProfile = 0;
         referenceType = NalReferenceType::NoReference;
     }
 
