@@ -12,11 +12,13 @@ namespace vw {
     class Device;
 
     struct DecodedPicture {
-        DecodedPicture(Device& device, SizeI surfaceSize, NalReferenceType referenceType, int iFrameNum);
+        DecodedPicture(Device& device, SizeI surfaceSize);
 
-        NalReferenceType referenceType;
+        PictureReferenceType referenceType;
         DecodedSurface surface;
         int iFrameNum;
+        int iTopFieldOrderCount;
+        int iBottomFieldOrderCount;
     };
 
     class DecodedPictureBuffer {
@@ -30,7 +32,7 @@ namespace vw {
         DecodedPictureBuffer& operator=(const DecodedPictureBuffer&) = delete;
         DecodedPictureBuffer& operator=(DecodedPictureBuffer&&) = delete;
 
-        DecodedPicture& createDecodedPicture(Device& device, SizeI surfaceSize, NalReferenceType referenceType, int iFrameNum);
+        DecodedPicture& createDecodedPicture(Device& device, const H264Infos &infos);
 
         void updateReferenceList(H264Infos &infos);
 

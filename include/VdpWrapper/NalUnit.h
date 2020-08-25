@@ -32,7 +32,7 @@ namespace vw {
         CodedSliceSVCExtension        = 20,
     };
 
-    enum class NalReferenceType {
+    enum class PictureReferenceType {
         NoReference                   = 0x0,
         TopReference                  = 0x1,
         BottomReference               = 0x2,
@@ -95,25 +95,6 @@ namespace vw {
         return "";
     }
 
-    struct PictureOrderCount {
-        PictureOrderCount();
-
-        // Context part
-        struct {
-            int lsb;
-            int msb;
-        } prevPicOrderCnt;
-        unsigned prevFrameNum;
-        unsigned prevFrameNumOffset;
-        int prevRefPictureTFOC;
-        int prevRefPictureIsBottomField;
-
-        // Compute part
-        int iPictureOrderCount;
-        int iTopFieldOrderCount;
-        int iBottomFieldOrderCount;
-    };
-
     struct H264Infos : public VdpPictureInfoH264 {
         H264Infos();
 
@@ -121,16 +102,12 @@ namespace vw {
         int iProfile;
 
         // For surfaces creation
-        vw::SizeU videoSize;
+        vw::SizeU pictureSize;
 
         // For decoding process
         bool bFirstSPSReceived;
         bool bFirstPPSReceived;
-        PictureOrderCount poc;
-        NalReferenceType referenceType;
-
-        // For DecodedPicuterBuffer management
-        SliceType sliceType;
+        PictureReferenceType referenceType;
     };
 
     class NalUnit {

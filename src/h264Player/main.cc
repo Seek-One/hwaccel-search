@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
         switch (nalUnit.getType()) {
         case vw::NalType::SPS:
         case vw::NalType::PPS:
+        case vw::NalType::SEI:
             // Nothing to do
             break;
 

@@ -60,19 +60,7 @@ namespace vw {
 
         bFirstSPSReceived = false;
         bFirstPPSReceived = false;
-        referenceType = NalReferenceType::NoReference;
-    }
-
-    PictureOrderCount::PictureOrderCount()
-    : prevPicOrderCnt({0, 0})
-    , prevFrameNum(0)
-    , prevFrameNumOffset(0)
-    , prevRefPictureTFOC(0)
-    , prevRefPictureIsBottomField(0)
-    , iPictureOrderCount(0)
-    , iTopFieldOrderCount(0)
-    , iBottomFieldOrderCount(0){
-
+        referenceType = PictureReferenceType::NoReference;
     }
 
     NalUnit::NalUnit()

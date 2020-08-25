@@ -62,8 +62,8 @@ namespace vw {
             auto vdpStatus = gVdpFunctionsInstance()->decoderCreate(
                 m_device.getVdpHandle(),
                 profile,
-                infos.videoSize.width,
-                infos.videoSize.height,
+                infos.pictureSize.width,
+                infos.pictureSize.height,
                 16, // Required by the standard
                 &m_decoder
             );
@@ -75,18 +75,18 @@ namespace vw {
             m_decodedPicturesBuffer.clear();
         }
 
-        // Add the last decoded picture
-        auto& newDecodedPicture = m_decodedPicturesBuffer.createDecodedPicture(m_device, infos.videoSize, infos.referenceType, infos.frame_num);
-
-        VdpBitstreamBuffer bitstreams[1];
-        bitstreams[0].struct_version = VDP_BITSTREAM_BUFFER_VERSION;
-        bitstreams[0].bitstream = nal.getBitstream().data();
-        bitstreams[0].bitstream_bytes = nal.getBitstream().size();
+        // Create a new decoded picture
+        auto& newDecodedPicture = m_decodedPicturesBuffer.createDecodedPicture(m_device, infos);
 
         // Update the VdpInfos to set the references frames
         H264Infos infosUpdated = infos;
         m_decodedPicturesBuffer.updateReferenceList(infosUpdated);
 
+        // Send coded picture to the decoder
+        VdpBitstreamBuffer bitstreams[1];
+        bitstreams[0].struct_version = VDP_BITSTREAM_BUFFER_VERSION;
+        bitstreams[0].bitstream = nal.getBitstream().data();
+        bitstreams[0].bitstream_bytes = nal.getBitstream().size();
         auto vdpStatus = gVdpFunctionsInstance()->decoderRender(
             m_decoder,
             newDecodedPicture.surface.getVdpHandle(),

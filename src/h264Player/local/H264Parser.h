@@ -25,9 +25,10 @@ private:
     void updateH264Infos();
     int computeSubWidthC() const;
     int computeSubHeightC() const;
-    void computeVideoSize();
+    void computePicutreSize();
 
     void computePoc();
+    void computePocType0();
 
 private:
     h264_stream_t* m_h264Stream;
@@ -37,9 +38,9 @@ private:
     int m_unprocessedDataSize;
 
     // Picture Order Count
-    // 8.2.1.1
-    int32_t m_prevPicOrderCntMsb; // Maybe uint16_t?
-    int32_t m_prevPicOrderCntLsb; // Maybe uint16_t?
+    int32_t m_prevPicOrderCntMsb;
+    int32_t m_prevPicOrderCntLsb;
+    int m_iPrevMMCO;
 };
 
 #endif // LOCAL_H264_PARSER_H
