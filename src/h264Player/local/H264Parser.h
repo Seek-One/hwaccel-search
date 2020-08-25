@@ -29,6 +29,8 @@ private:
 
     void computePoc();
     void computePocType0();
+    void computePocType1();
+    void computePocType2();
 
 private:
     h264_stream_t* m_h264Stream;
@@ -38,8 +40,10 @@ private:
     int m_unprocessedDataSize;
 
     // Picture Order Count
-    int32_t m_prevPicOrderCntMsb;
-    int32_t m_prevPicOrderCntLsb;
+    int m_prevPicOrderCntMsb;
+    int m_prevPicOrderCntLsb;
+    int m_prevFrameNumOffset;
+    int m_prevFrameNum;
     int m_iPrevMMCO;
 };
 

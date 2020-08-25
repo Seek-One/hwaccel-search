@@ -12,6 +12,8 @@ H264Parser::H264Parser(const std::string& filename)
 , m_unprocessedDataSize(0)
 , m_prevPicOrderCntMsb(0)
 , m_prevPicOrderCntLsb(0)
+, m_prevFrameNumOffset(0)
+, m_prevFrameNum(0)
 , m_iPrevMMCO(0) {
     std::ifstream bitstreamFile(filename, std::ios::binary);
     if (!bitstreamFile.good()) {
@@ -259,7 +261,15 @@ void H264Parser::computePicutreSize() {
 void H264Parser::computePoc() {
     switch (m_h264Infos.pic_order_cnt_type) {
     case 0:
-        computePocType0(/*currentDecodedPicture*/);
+        computePocType0();
+        break;
+
+    case 1:
+        computePocType1();
+        break;
+
+    case 2:
+        computePocType2();
         break;
 
     default:
@@ -267,7 +277,7 @@ void H264Parser::computePoc() {
     }
 }
 
-void H264Parser::computePocType0(/* DecodedPicture& currentDecodedPicture */) {
+void H264Parser::computePocType0() {
     // Compute POC in according section 8.2.1.1 of H264 reference
 
     // IDR case
@@ -310,6 +320,120 @@ void H264Parser::computePocType0(/* DecodedPicture& currentDecodedPicture */) {
     if (m_h264Stream->nal->nal_ref_idc) {
         m_prevPicOrderCntMsb = iPicOrderCntMsb;
         m_prevPicOrderCntLsb = m_h264Stream->sh->pic_order_cnt_lsb;
+        m_iPrevMMCO = m_h264Stream->sh->drpm.memory_management_control_operation[0];
+    }
+
+    // Store POC informations for the decoder
+    m_h264Infos.field_order_cnt[0] = iTopFieldOrderCnt;
+    m_h264Infos.field_order_cnt[1] = iBottomFieldOrderCnt;
+}
+
+void H264Parser::computePocType1() {
+    // Compute POC in according section 8.2.1.2 of H264 reference
+
+    // IDR case
+    int prevFrameNumOffset = 0;
+    int iFrameNumOffset = 0;
+
+    // No IDR case
+    if (m_h264Stream->nal->nal_unit_type != static_cast<int>(vw::NalType::CodedSliceIDR)) {
+        // Set prevFrameNumOffset value
+        if (m_iPrevMMCO != 5) {
+            prevFrameNumOffset = m_prevFrameNumOffset;
+        }
+
+        // Set FrameNumOffset value
+        int iMaxFrameNum = std::exp2(m_h264Stream->sps->log2_max_frame_num_minus4 + 4);
+        iFrameNumOffset = prevFrameNumOffset;
+        if (m_prevFrameNum > m_h264Stream->sh->frame_num) {
+            iFrameNumOffset += iMaxFrameNum;
+        }
+    }
+
+    int absFrameNum = 0;
+    if (!m_h264Stream->sps->num_ref_frames_in_pic_order_cnt_cycle) {
+        absFrameNum = iFrameNumOffset + m_h264Stream->sh->frame_num;
+    }
+
+    if (!m_h264Stream->nal->nal_ref_idc && absFrameNum > 0) {
+        --absFrameNum;
+    }
+
+    int expectedPicOrderCnt = 0;
+    if (absFrameNum > 0) {
+        int iExpectedDeltaPerPicOrderCntCycle = 0;
+        for (int i = 0; i < m_h264Stream->sps->num_ref_frames_in_pic_order_cnt_cycle; ++i) {
+            iExpectedDeltaPerPicOrderCntCycle += m_h264Stream->sps->offset_for_ref_frame[i];
+        }
+
+        int picOrderCntCycleCnt = (absFrameNum - 1) / m_h264Stream->sps->num_ref_frames_in_pic_order_cnt_cycle;
+        int frameNumInPicOrderCntCycle = (absFrameNum - 1) % m_h264Stream->sps->num_ref_frames_in_pic_order_cnt_cycle;
+
+        expectedPicOrderCnt = picOrderCntCycleCnt * iExpectedDeltaPerPicOrderCntCycle;
+        for (int i = 0; i <= frameNumInPicOrderCntCycle; ++i) {
+            expectedPicOrderCnt += m_h264Stream->sps->offset_for_ref_frame[i];
+        }
+
+        if (!m_h264Stream->nal->nal_ref_idc) {
+            expectedPicOrderCnt += m_h264Stream->sps->offset_for_non_ref_pic;
+        }
+    }
+
+    int iTopFieldOrderCnt = expectedPicOrderCnt + m_h264Stream->sh->delta_pic_order_cnt[0];
+    int iBottomFieldOrderCnt = iTopFieldOrderCnt + m_h264Stream->sps->offset_for_top_to_bottom_field;
+    if (m_h264Stream->sh->bottom_field_flag) {
+        iBottomFieldOrderCnt += m_h264Stream->sh->delta_pic_order_cnt[0];
+    } else {
+        iBottomFieldOrderCnt += m_h264Stream->sh->delta_pic_order_cnt[1];
+    }
+
+    // Update previous reference infos for next computation
+    if (m_h264Stream->nal->nal_ref_idc) {
+        m_prevFrameNumOffset = iFrameNumOffset;
+        m_prevFrameNum = m_h264Stream->sh->frame_num;
+        m_iPrevMMCO = m_h264Stream->sh->drpm.memory_management_control_operation[0];
+    }
+
+    // Store POC informations for the decoder
+    m_h264Infos.field_order_cnt[0] = iTopFieldOrderCnt;
+    m_h264Infos.field_order_cnt[1] = iBottomFieldOrderCnt;
+}
+
+void H264Parser::computePocType2() {
+    // Compute POC in according section 8.2.1.3 of H264 reference
+
+    // IDR case
+    int prevFrameNumOffset = 0;
+    int iFrameNumOffset = 0;
+    int tempPicOrderCnt = 0;
+
+    // No IDR case
+    if (m_h264Stream->nal->nal_unit_type != static_cast<int>(vw::NalType::CodedSliceIDR)) {
+        // Set prevFrameNumOffset value
+        if (m_iPrevMMCO != 5) {
+            prevFrameNumOffset = m_prevFrameNumOffset;
+        }
+
+        // Set FrameNumOffset value
+        int iMaxFrameNum = std::exp2(m_h264Stream->sps->log2_max_frame_num_minus4 + 4);
+        iFrameNumOffset = prevFrameNumOffset;
+        if (m_prevFrameNum > m_h264Stream->sh->frame_num) {
+            iFrameNumOffset += iMaxFrameNum;
+        }
+
+        // Set tempPicOrderCnt value
+        tempPicOrderCnt = 2 * (iFrameNumOffset + m_h264Stream->sh->frame_num);
+        if (!m_h264Stream->nal->nal_ref_idc) {
+            --tempPicOrderCnt;
+        }
+    }
+
+    int iTopFieldOrderCnt = tempPicOrderCnt;
+    int iBottomFieldOrderCnt = tempPicOrderCnt;
+
+    // Update previous reference infos for next computation
+    if (m_h264Stream->nal->nal_ref_idc) {
+        m_prevFrameNumOffset = iFrameNumOffset;
         m_iPrevMMCO = m_h264Stream->sh->drpm.memory_management_control_operation[0];
     }
 
