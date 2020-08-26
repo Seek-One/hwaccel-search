@@ -31,7 +31,6 @@ namespace vw {
 
         // Create VdpSurface
         SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
-        std::cout << "[RenderSurface] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
         allocateVdpSurface(device, imageSize);
 
         // Upload bytes to the surface
@@ -105,6 +104,5 @@ namespace vw {
         assert(format == VDP_RGBA_FORMAT_B8G8R8A8);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
-        std::cout << "[RenderSurface] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
     }
 }

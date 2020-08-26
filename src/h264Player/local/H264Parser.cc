@@ -65,7 +65,6 @@ void H264Parser::updateH264Infos() {
     vw::NalType nalType = static_cast<vw::NalType>(m_h264Stream->nal->nal_unit_type);
     switch (nalType) {
     case vw::NalType::SPS:
-        std::cout << "[H264Parser] SPS parsed" << std::endl;
         m_h264Infos.num_ref_frames = m_h264Stream->sps->num_ref_frames;
         m_h264Infos.mb_adaptive_frame_field_flag = m_h264Stream->sps->mb_adaptive_frame_field_flag;
         m_h264Infos.frame_mbs_only_flag = m_h264Stream->sps->frame_mbs_only_flag;
@@ -97,7 +96,6 @@ void H264Parser::updateH264Infos() {
         break;
 
     case vw::NalType::PPS:
-        std::cout << "[H264Parser] PPS parsed" << std::endl;
         m_h264Infos.constrained_intra_pred_flag = m_h264Stream->pps->constrained_intra_pred_flag;
         m_h264Infos.weighted_pred_flag = m_h264Stream->pps->weighted_pred_flag;
         m_h264Infos.weighted_bipred_idc = m_h264Stream->pps->weighted_bipred_idc;
@@ -129,13 +127,8 @@ void H264Parser::updateH264Infos() {
         m_h264Infos.bFirstPPSReceived = true;
         break;
 
-    case vw::NalType::SEI:
-        std::cout << "[H264Parser] SEI parsed" << std::endl;
-        break;
-
     case vw::NalType::CodedSliceIDR:
     case vw::NalType::CodedSliceNonIDR: {
-        std::cout << "[H264Parser] Slice parsed" << std::endl;
 
         auto sliceType = vw::getSliceType(m_h264Stream->sh->slice_type);
         switch (sliceType) {

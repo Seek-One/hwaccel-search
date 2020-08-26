@@ -12,7 +12,6 @@ namespace vw {
     : m_vdpVideoSurface(VDP_INVALID_HANDLE)
     , m_size(size)
     , m_iPictureOrderCount(-1) {
-        std::cout << "[DecodedSurface] Surface size: " << size.width << " x " << size.height << std::endl;
         allocateVdpSurface(device, size);
     }
 
@@ -102,6 +101,5 @@ namespace vw {
         assert(format == VDP_YCBCR_FORMAT_NV12);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
-        std::cout << "[DecodedSurface] Surface size: " << realSize.width << " x " << realSize.height << std::endl;
     }
 }
