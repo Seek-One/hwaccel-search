@@ -25,6 +25,7 @@ namespace vw {
 
         SizeI getScreenSize() const;
 
+        void waitEvent();
         void processEvent();
 
     private:

@@ -20,8 +20,11 @@ add_executable(${LOCAL_PROJECT_NAMESPACE}::${LOCAL_PROJECT_NAME} ALIAS h264_play
 # Dependencies #
 ################
 
-target_link_libraries(h264_player_target vw::VdpWrapper)
-target_link_libraries(h264_player_target hb::h264bitstream)
+target_link_libraries(h264_player_target
+    PRIVATE
+        vw::VdpWrapper
+        hb::h264bitstream
+)
 
 ############
 # Building #

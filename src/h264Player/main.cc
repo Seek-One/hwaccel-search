@@ -1,5 +1,4 @@
 #include <iostream>
-#include <thread>
 
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/Decoder.h>
@@ -12,8 +11,6 @@
 #include <VdpWrapper/VideoMixer.h>
 
 #include "local/H264Parser.h"
-
-using namespace std::chrono_literals;
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -35,7 +32,11 @@ int main(int argc, char *argv[]) {
     H264Parser parser(argv[1]);
     vw::NalUnit nalUnit;
 
-    while (parser.readNextNAL(nalUnit)) {
+    while (parser.readNextNAL(nalUnit) && display.isOpened()) {
+        // Handle XEvent
+        display.processEvent();
+        mixer.setOutputSize(display.getScreenSize());
+
         switch (nalUnit.getType()) {
         case vw::NalType::SPS:
         case vw::NalType::PPS:
@@ -62,8 +63,8 @@ int main(int argc, char *argv[]) {
 
     std::cout << "[main] End of parsing" << std::endl;
 
-    // Dirty waiting loop
-    for (;;) {
+    while (display.isOpened()) {
+        display.waitEvent();
     }
 
     return 0;

@@ -74,7 +74,7 @@ namespace vw {
         return m_screenSize;
     }
 
-    void Display::processEvent() {
+    void Display::waitEvent() {
         XEvent event;
         XNextEvent(m_pXDisplay, &event);
 
@@ -100,5 +100,13 @@ namespace vw {
         default:
             break;
         }
+    }
+
+    void Display::processEvent() {
+        if (XPending(m_pXDisplay) == 0) {
+            return;
+        }
+
+        waitEvent();
     }
 }

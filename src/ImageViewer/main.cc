@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         vw::RenderSurface outputSurface = mixer.process(inputSurface);
         presentationQueue.enqueue(std::move(outputSurface));
 
-        display.processEvent();
+        display.waitEvent();
     }
 
     return 0;
