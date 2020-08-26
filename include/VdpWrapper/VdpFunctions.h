@@ -44,7 +44,7 @@ namespace vw {
         VdpPresentationQueueSetBackgroundColor* presentationQueueSetBackgroundColor;
         VdpPresentationQueueGetTime* presentationQueueGetTime;
         VdpPresentationQueueDisplay* presentationQueueDisplay;
-
+        VdpPresentationQueueQuerySurfaceStatus* presentationQueueQuerySurfaceStatus;
 
     private:
         void storeFunction(VdpDevice& vdpDevice, VdpFuncId functionID);

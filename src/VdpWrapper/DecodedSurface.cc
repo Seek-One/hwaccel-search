@@ -10,7 +10,8 @@
 namespace vw {
     DecodedSurface::DecodedSurface(Device& device, SizeU size)
     : m_vdpVideoSurface(VDP_INVALID_HANDLE)
-    , m_size(size) {
+    , m_size(size)
+    , m_iPictureOrderCount(-1) {
         std::cout << "[DecodedSurface] Surface size: " << size.width << " x " << size.height << std::endl;
         allocateVdpSurface(device, size);
     }
@@ -46,13 +47,15 @@ namespace vw {
 
     DecodedSurface::DecodedSurface(DecodedSurface&& other)
     : m_vdpVideoSurface(std::exchange(other.m_vdpVideoSurface, VDP_INVALID_HANDLE))
-    , m_size(std::exchange(other.m_size, 0)) {
+    , m_size(std::exchange(other.m_size, 0))
+    , m_iPictureOrderCount(std::exchange(other.m_iPictureOrderCount, -1)) {
 
     }
 
     DecodedSurface& DecodedSurface::operator=(DecodedSurface&& other) {
         std::swap(m_vdpVideoSurface, other.m_vdpVideoSurface);
         std::swap(m_size, other.m_size);
+        std::swap(m_iPictureOrderCount, other.m_iPictureOrderCount);
 
         return *this;
     }
@@ -63,6 +66,14 @@ namespace vw {
 
     VdpVideoSurface DecodedSurface::getVdpHandle() const {
         return m_vdpVideoSurface;
+    }
+
+    void DecodedSurface::setPictureOrderCount(int iPictureOrderCount) {
+        m_iPictureOrderCount = iPictureOrderCount;
+    }
+
+    int DecodedSurface::getPictureOrderCount() const {
+        return m_iPictureOrderCount;
     }
 
     void DecodedSurface::allocateVdpSurface(Device& device, const SizeU& size) {

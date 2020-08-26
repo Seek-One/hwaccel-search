@@ -19,6 +19,7 @@ namespace vw {
         int iFrameNum;
         int iTopFieldOrderCount;
         int iBottomFieldOrderCount;
+        int iPictureOrderCount;
     };
 
     class DecodedPictureBuffer {

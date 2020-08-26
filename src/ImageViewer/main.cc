@@ -23,20 +23,15 @@ int main(int argc, char *argv[]) {
     vw::Device device(display);
     vw::PresentationQueue presentationQueue(display, device);
     vw::DecodedSurface inputSurface(device, argv[1], sourceSize);
-    vw::RenderSurface outputSurface(device, screenSize);
-    vw::VideoMixer mixer(device);
-
-    // Render the first image
-    mixer.process(inputSurface, outputSurface);
-    presentationQueue.enqueue(outputSurface);
+    vw::VideoMixer mixer(device, screenSize);
 
     while (display.isOpened()) {
-        display.processEvent();
-
         // Update the output surface
-        outputSurface.resize(display.getScreenSize());
-        mixer.process(inputSurface, outputSurface);
-        presentationQueue.enqueue(outputSurface);
+        mixer.setOutputSize(display.getScreenSize());
+        vw::RenderSurface outputSurface = mixer.process(inputSurface);
+        presentationQueue.enqueue(std::move(outputSurface));
+
+        display.processEvent();
     }
 
     return 0;

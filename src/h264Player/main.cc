@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
     vw::Device device(display);
     vw::Decoder decoder(device);
     vw::PresentationQueue presentationQueue(display, device);
-    vw::VideoMixer mixer(device);
+    presentationQueue.setFramerate(24);
+    vw::VideoMixer mixer(device, screenSize);
 
     H264Parser parser(argv[1]);
     vw::NalUnit nalUnit;
@@ -45,12 +46,8 @@ int main(int argc, char *argv[]) {
         case vw::NalType::CodedSliceNonIDR:
         case vw::NalType::CodedSliceIDR: {
             vw::DecodedSurface& decodedSurface = decoder.decode(nalUnit);
-            vw::RenderSurface outputSurface(device, display.getScreenSize());
-            mixer.process(decodedSurface, outputSurface);
-            presentationQueue.enqueue(outputSurface);
-            // std::this_thread::sleep_for(66ms); // ~15 FPS
-            std::this_thread::sleep_for(42ms); // ~24 FPS
-            // std::this_thread::sleep_for(500ms); // debug
+            vw::RenderSurface outputSurface = mixer.process(decodedSurface);
+            presentationQueue.enqueue(std::move(outputSurface));
             break;
         }
 
@@ -61,6 +58,12 @@ int main(int argc, char *argv[]) {
         default:
             std::cout << "[main] Unhandled NAL type: " << static_cast<int>(nalUnit.getType()) << std::endl;
         }
+    }
+
+    std::cout << "[main] End of parsing" << std::endl;
+
+    // Dirty waiting loop
+    for (;;) {
     }
 
     return 0;

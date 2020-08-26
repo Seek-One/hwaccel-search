@@ -13,16 +13,16 @@
 
 namespace vw {
     RenderSurface::RenderSurface(Device& device, const SizeU& size)
-    : m_device(device)
-    , m_vdpOutputSurface(VDP_INVALID_HANDLE)
-    , m_size(size) {
-        allocateVdpSurface(m_device, size);
+    : m_vdpOutputSurface(VDP_INVALID_HANDLE)
+    , m_size(size)
+    , m_iPictureOrderCount(-1) {
+        if (m_size != SizeU(0u, 0u)) {
+            allocateVdpSurface(device, size);
+        }
     }
 
     RenderSurface::RenderSurface(Device& device, const std::string& filename)
-    : m_device(device)
-    , m_vdpOutputSurface(VDP_INVALID_HANDLE)
-    , m_size({ 0u, 0u}) {
+    : RenderSurface(device, SizeU(0u, 0u)) {
         // Load the image with openCV
         cv::Mat decompressedImage = cv::imread(filename);
 
@@ -32,7 +32,7 @@ namespace vw {
         // Create VdpSurface
         SizeU imageSize(decompressedImage.size().width, decompressedImage.size().height);
         std::cout << "[RenderSurface] Image size: " << imageSize.width << " x " << imageSize.height << std::endl;
-        allocateVdpSurface(m_device, imageSize);
+        allocateVdpSurface(device, imageSize);
 
         // Upload bytes to the surface
         const void* planes[1] = { buffer.getPlane(0) };
@@ -47,23 +47,36 @@ namespace vw {
     }
 
     RenderSurface::~RenderSurface() {
-        gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
+        if (m_vdpOutputSurface != VDP_INVALID_HANDLE) {
+            gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
+        }
+    }
+
+    RenderSurface::RenderSurface(RenderSurface&& other)
+    : m_vdpOutputSurface(std::exchange(other.m_vdpOutputSurface, VDP_INVALID_HANDLE))
+    , m_size(std::exchange(other.m_size, 0))
+    , m_iPictureOrderCount(std::exchange(other.m_iPictureOrderCount, -1)) {
+
+    }
+
+    RenderSurface& RenderSurface::operator=(RenderSurface&& other) {
+        std::swap(m_vdpOutputSurface, other.m_vdpOutputSurface);
+        std::swap(m_size, other.m_size);
+        std::swap(m_iPictureOrderCount, other.m_iPictureOrderCount);
+
+        return *this;
     }
 
     VdpOutputSurface RenderSurface::getVdpHandle() const {
         return m_vdpOutputSurface;
     }
 
-    void RenderSurface::resize(SizeU newSize) {
-        if (m_size == newSize) {
-            return;
-        }
-        m_size = newSize;
+    void RenderSurface::setPictureOrderCount(int iPictureOrderCount) {
+        m_iPictureOrderCount = iPictureOrderCount;
+    }
 
-        auto vdpStatus = gVdpFunctionsInstance()->outputSurfaceDestroy(m_vdpOutputSurface);
-        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't destroy previous surface before resizing");
-
-        allocateVdpSurface(m_device, m_size);
+    int RenderSurface::getPictureOrderCount() const {
+        return m_iPictureOrderCount;
     }
 
     void RenderSurface::allocateVdpSurface(Device& device, const SizeU& size) {

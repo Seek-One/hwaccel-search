@@ -23,6 +23,8 @@ namespace vw {
 
         SizeU getSize() const;
         VdpVideoSurface getVdpHandle() const;
+        void setPictureOrderCount(int iPictureOrderCount);
+        int getPictureOrderCount() const;
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);
@@ -30,6 +32,7 @@ namespace vw {
     private:
         VdpVideoSurface m_vdpVideoSurface;
         SizeU m_size;
+        int m_iPictureOrderCount;
     };
 }
 

@@ -17,22 +17,22 @@ namespace vw {
         ~RenderSurface();
 
         RenderSurface(const RenderSurface&) = delete;
-        RenderSurface(RenderSurface&&) = delete;
+        RenderSurface(RenderSurface&& other);
 
         RenderSurface& operator=(const RenderSurface&) = delete;
-        RenderSurface& operator=(RenderSurface&&) = delete;
+        RenderSurface& operator=(RenderSurface&& other);
 
         VdpOutputSurface getVdpHandle() const;
-
-        void resize(SizeU newSize);
+        void setPictureOrderCount(int iPictureOrderCount);
+        int getPictureOrderCount() const;
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);
 
     private:
-        Device& m_device;
         VdpOutputSurface m_vdpOutputSurface;
         SizeU m_size;
+        int m_iPictureOrderCount;
     };
 }
 

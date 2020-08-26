@@ -12,7 +12,7 @@ namespace vw {
 
     class VideoMixer {
     public:
-        VideoMixer(Device& device);
+        VideoMixer(Device& device, SizeU outputSize);
         ~VideoMixer();
 
         VideoMixer(const VideoMixer&) = delete;
@@ -21,7 +21,9 @@ namespace vw {
         VideoMixer& operator=(const VideoMixer&) = delete;
         VideoMixer& operator=(VideoMixer&&) = delete;
 
-        void process(DecodedSurface &inputSurface, RenderSurface &outputSurface);
+        void setOutputSize(SizeU outputSize);
+
+        RenderSurface process(DecodedSurface &inputSurface);
 
     private:
         void createMixer(SizeU size);
@@ -29,6 +31,7 @@ namespace vw {
     private:
         Device& m_device;
         VdpVideoMixer m_mixer;
+        SizeU m_outputSize;
     };
 }
 

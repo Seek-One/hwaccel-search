@@ -96,6 +96,8 @@ namespace vw {
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[Decoder] Couldn't decode the picture");
 
+        newDecodedPicture.surface.setPictureOrderCount(newDecodedPicture.iPictureOrderCount);
+
         return newDecodedPicture.surface;
     }
 }

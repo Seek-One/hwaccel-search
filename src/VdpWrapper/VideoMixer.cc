@@ -6,9 +6,10 @@
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
-    VideoMixer::VideoMixer(Device& device)
+    VideoMixer::VideoMixer(Device& device, SizeU outputSize)
     : m_device(device)
-    , m_mixer(VDP_INVALID_HANDLE) {
+    , m_mixer(VDP_INVALID_HANDLE)
+    , m_outputSize(outputSize) {
 
     }
 
@@ -18,10 +19,17 @@ namespace vw {
         }
     }
 
-    void VideoMixer::process(DecodedSurface &inputSurface, RenderSurface &outputSurface) {
+    void VideoMixer::setOutputSize(SizeU outputSize) {
+        m_outputSize = outputSize;
+    }
+
+    RenderSurface VideoMixer::process(DecodedSurface &inputSurface) {
         if (m_mixer == VDP_INVALID_HANDLE) {
             createMixer(inputSurface.getSize());
         }
+
+        // Create the output surface
+        RenderSurface outputSurface(m_device, m_outputSize);
 
         VdpStatus vdpStatus = gVdpFunctionsInstance()->videoMixerRender(
             m_mixer,
@@ -54,6 +62,10 @@ namespace vw {
             nullptr
         );
         gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[VideoMixer] Couldn't render the surface");
+
+        outputSurface.setPictureOrderCount(inputSurface.getPictureOrderCount());
+
+        return std::move(outputSurface);
     }
 
     void VideoMixer::createMixer(SizeU size) {

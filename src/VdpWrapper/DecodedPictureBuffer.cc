@@ -1,9 +1,7 @@
 #include <VdpWrapper/DecodedPictureBuffer.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iostream>
 
 #include <VdpWrapper/Device.h>
 
@@ -13,7 +11,8 @@ namespace vw {
     , surface(device, surfaceSize)
     , iFrameNum(0)
     , iTopFieldOrderCount(0)
-    , iBottomFieldOrderCount(0) {
+    , iBottomFieldOrderCount(0)
+    , iPictureOrderCount(0) {
 
     }
 
@@ -25,6 +24,14 @@ namespace vw {
         decodedPicture.iFrameNum = infos.frame_num;
         decodedPicture.iTopFieldOrderCount = infos.field_order_cnt[0];
         decodedPicture.iBottomFieldOrderCount = infos.field_order_cnt[1];
+
+        if (infos.field_order_cnt && infos.bottom_field_flag) {
+            decodedPicture.iPictureOrderCount = decodedPicture.iBottomFieldOrderCount;
+        } else if (infos.field_order_cnt) {
+            decodedPicture.iPictureOrderCount = decodedPicture.iTopFieldOrderCount;
+        } else {
+            decodedPicture.iPictureOrderCount = std::min(decodedPicture.iTopFieldOrderCount, decodedPicture.iBottomFieldOrderCount);
+        }
 
         // Sliding window
         // TODO: must be refactored

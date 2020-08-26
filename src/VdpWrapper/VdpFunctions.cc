@@ -30,6 +30,7 @@ namespace vw {
     , presentationQueueSetBackgroundColor(nullptr)
     , presentationQueueGetTime(nullptr)
     , presentationQueueDisplay(nullptr)
+    , presentationQueueQuerySurfaceStatus(nullptr)
     , m_pGetProcAddress(pGetProcAddress)
     , m_pGetErrorString(nullptr) {
         storeFunction(vdpDevice, VDP_FUNC_ID_GET_ERROR_STRING);
@@ -56,6 +57,7 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_SET_BACKGROUND_COLOR);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_GET_TIME);
         storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_DISPLAY);
+        storeFunction(vdpDevice, VDP_FUNC_ID_PRESENTATION_QUEUE_QUERY_SURFACE_STATUS);
     }
 
     std::string VdpFunctions::getErrorString(VdpStatus status) const {
@@ -174,6 +176,10 @@ namespace vw {
 
             case VDP_FUNC_ID_PRESENTATION_QUEUE_DISPLAY:
                 presentationQueueDisplay = reinterpret_cast<VdpPresentationQueueDisplay*>(func);
+                break;
+
+            case VDP_FUNC_ID_PRESENTATION_QUEUE_QUERY_SURFACE_STATUS:
+                presentationQueueQuerySurfaceStatus = reinterpret_cast<VdpPresentationQueueQuerySurfaceStatus*>(func);
                 break;
 
             default:
