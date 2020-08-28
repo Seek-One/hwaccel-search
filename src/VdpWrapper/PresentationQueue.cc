@@ -75,6 +75,13 @@ namespace vw {
         int iPOC = queuedSurface.surface.getPictureOrderCount() / 2;
         queuedSurface.iPOC = iPOC;
 
+        // This parameters are useful to handle presentation time
+        // When POC == 0, we start a new sequence. Hence, we set
+        // m_beginTime to current time for the first sequence (aka
+        // if m_endTime == 0) or we set m_beginTime to m_endTime
+        // When POC > 1 we set the presentation time to the  m_beginTime +
+        // m_framerateStep * iPOC and we updated the m_endTime if needed
+
         // If it's a new sequence
         if (iPOC == 0) {
             // If it's the first sequence

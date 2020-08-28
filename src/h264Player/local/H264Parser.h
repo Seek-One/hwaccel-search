@@ -8,8 +8,16 @@
 
 #include <VdpWrapper/NalUnit.h>
 
+/**
+ * @brief H264Parser is wrapper around h264bitstream library
+ */
 class H264Parser {
 public:
+    /**
+     * @brief Construct a new H264Parser
+     *
+     * @param filename Filename of bitstream
+     */
     H264Parser(const std::string& filename);
     ~H264Parser();
 
@@ -19,6 +27,16 @@ public:
     H264Parser& operator=(const H264Parser&) = delete;
     H264Parser& operator=(H264Parser&&) = delete;
 
+    /**
+     * @brief Read the next NAL unit and update H264 informations
+     *
+     * The parser keeps the H264 informations to be able to
+     * update the vw::NalUnit object.
+     *
+     * @param nalUnit A NAL unit filled by the bitstream informations
+     * @return true If a NAL unit has been parsed
+     * @return false Otherwise
+     */
     bool readNextNAL(vw::NalUnit &nalUnit);
 
 private:
