@@ -1,6 +1,7 @@
 # VDPAU C++ Wrapper
 
 **VDPAU C++ Wrapper (VdpWrapper)** is a library to encapsulate the [VDPAU API](https://vdpau.pages.freedesktop.org/libvdpau/) in c++.
+
 VDPAU C++ Wrapper is licensed under the terms and conditions of [MIT licence](https://spdx.org/licenses/MIT.html).
 
 ## Dependencies
@@ -35,11 +36,11 @@ display it via VDPAU. The source are located here : [src/ImageViewer](src/ImageV
 Currently, the software only take image on [NV12 format](https://wiki.videolan.org/YUV#NV12). This following
 command convert a image to a NV12 format via FFMPEG:
 
-```sh
-ffmpeg -i ../image.jpeg -vf format=nv12 image.yuv
+```
+ffmpeg -i <input_image> -vf format=nv12 <output_image.yuv>
 
 # You can check your YUV image with this command:
-# ffplay -video_size 1920x1080 -pixel_format nv12 image.yuv
+# ffplay -video_size 1920x1080 -pixel_format nv12 <output_image.yuv>
 ```
 
 To run the program:
@@ -53,17 +54,12 @@ To run the program:
 decoder for display it in presentation order.
 
 To generate a H264 bitstream file, you can use FFMPEG:
-```sh
+```
 ffmpeg -i <input_video> [-ss HH:MM:SS] [-t HH:MM:SS] -c:v copy -vbsf h264_mp4toannexb <output_file.h264>
 ```
 The options `-ss` and `-t` are optional and their purpose, respectively, is to start the copy at
 a specific time of input video and to produce a output video with specified duration.
 
-**NOTE:** The computation of Presentation Time Stamp (PTS) is a tricky part and it's not the main
-propose of this project, so it's work for video which the POC are increasing by 2 every each reference frame but we have
-some trouble to read videos which a POC is increasing by 1 every each reference frame.
-
-
-The computation of Presentation Time Stamp (PTS) is a tricky part and it's not the main purpose of this
+**NOTE:** The computation of Presentation Time Stamp (PTS) is a tricky part and it's not the main purpose of this
 project, so it works for video whose POCs increase by 2 every each reference frame but we have some
 difficulties to reading videos whose POCs increase by 1 every each reference frame.
