@@ -48,6 +48,7 @@ target_link_libraries(image_viewer_target vw::VdpWrapper)
 # Change the output name
 set_target_properties(image_viewer_target PROPERTIES
     OUTPUT_NAME ${LOCAL_PROJECT_OUTPUT_NAME}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # Where to find the header files

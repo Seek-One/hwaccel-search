@@ -53,6 +53,7 @@ target_link_libraries(h264_player_target
 # Change the output name
 set_target_properties(h264_player_target PROPERTIES
     OUTPUT_NAME ${LOCAL_PROJECT_OUTPUT_NAME}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # Where to find the header files
