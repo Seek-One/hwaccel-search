@@ -5,8 +5,10 @@ All sources are licensed under the terms and conditions of [MIT licence](https:/
 
 ## vdpau-c++-wrapper
 This project provides a library to wrap the VDPAU API for decoding ant post-processing images and video.
-See the [README](vdpau-c++-wrapper) for more details.
+
+See the [README](vdpau-c++-wrapper#vdpau-c-wrapper) for more details.
 
 ## ffmpeg-benchmarks
 This project is a shell script to benchmark the time performance of different encoders.
-See the [README](ffmpeg-benchmarks) for more details.
+
+See the [README](ffmpeg-benchmarks#ffmpeg-benchmarks) for more details.
