@@ -1,6 +1,6 @@
 # FFMPEG benchmarks
 
-**FFMPEG benchmarks** is a shell script used to call ffmpeg encoders and to benchmark the time performance.
+**FFMPEG benchmarks** is a shell script used to call ffmpeg encoders and to benchmark their performances (time and output file size).
 
 FFMPEG benchmarks is licensed under the terms and conditions of [MIT licence](https://spdx.org/licenses/MIT.html).
 
@@ -14,20 +14,38 @@ This script will be run some encoding with different codecs and parameters. Each
 a output video file with name `test-<codec_name>[-<config_name>].mkv` and the elapsed time stored in
 `time-<codec_name>[-<config_name>].txt`.
 
+The `<codec_name>` corresponding of library name which provide the codec:
+- libvpx (VP8)
+- libvpx-vp9 (VP9)
+- x264
+- openh264
+- x265
+- mjpeg
+- libaom-av1 (AV1)
+
+The `<config_name>` corresponding of profile used for encoding:
+- "": the CPU encoder is used with default parameter
+- "rt": the CPU encoder is used with parameters to smallest encoding time
+- "vaapi": Use VA-API (GPU) for encoding only
+- "vaapi-full" Use VA-API (GPU) for decoding and encoding
+- "nvenc": Use NVENC (GPU) for encoding only
+- "nvenc-full" Use NVENC (GPU) for decoding and encoding
+
 When all configuration are finished, the script create a csv file with all elapsed time for each
 configuration and the size of video file.
 
 All encoding have the *same* quality parameters and use the same input video which must be named `source.mp4`.
 
 By default, the script benchmarks 4 codecs:
-- VP8 (libvpx)
-- VP9 (libvpx-vp9)
+- libvpx
+- libvpx-vp9
 - x264
 - x265
+- mjpeg
 
 And for each codecs have two configuration:
-- "": the encoder is used with default parameter
-- "rt": the encoder is used with parameters to smallest encoding time
+- ""
+- "rt"
 
 This script handle also other configuration / codecs whose be enabled with options. In
 addition, we can provide an other FFMPEG to run the tests (useful to test some feature not
