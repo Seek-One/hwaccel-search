@@ -19,7 +19,8 @@ namespace vw {
     }
 
     PresentationQueue::PresentationQueue(Display& display, Device &device)
-    : m_beginTime(0)
+    : m_bEnablePTS(true)
+    , m_beginTime(0)
     , m_endTime(0)
     , m_framerateStep(0)
     , m_iNextPOC(0) {
@@ -62,6 +63,10 @@ namespace vw {
         std::cout << "[PresentationQueue] Framerate set to: " << m_framerateStep << std::endl;
     }
 
+    void PresentationQueue::enablePresentationOrderDisplay(bool bEnabled) {
+        m_bEnablePTS = bEnabled;
+    }
+
     bool PresentationQueue::enqueue(RenderSurface surface) {
         // Keep the ownership of the surface
         m_queuedSurfaces.emplace_back(std::move(surface));
@@ -83,7 +88,7 @@ namespace vw {
         // m_framerateStep * iPOC and we updated the m_endTime if needed
 
         // If it's a new sequence
-        if (iPOC == 0) {
+        if (m_bEnablePTS && iPOC == 0) {
             // If it's the first sequence
             if (m_endTime == 0) {
                 m_beginTime = getCurrentTime();
@@ -92,7 +97,7 @@ namespace vw {
             }
             m_endTime = m_beginTime + m_framerateStep;
             presentationTime = m_beginTime;
-        } else if (iPOC > 0) {
+        } else if (m_bEnablePTS && iPOC > 0) {
             presentationTime = m_beginTime + m_framerateStep * iPOC;
             if (presentationTime >= m_endTime) {
                 m_endTime = presentationTime + m_framerateStep;
@@ -100,43 +105,63 @@ namespace vw {
         }
         // If no POC specified
         else {
-            presentationTime = getCurrentTime();
+            // Initialize the first timestamp
+            if (m_beginTime == 0) {
+                m_beginTime = getCurrentTime();
+                m_endTime = m_beginTime + m_framerateStep;
+            } else {
+                m_beginTime = m_endTime;
+                m_endTime += m_framerateStep;
+            }
+            presentationTime = m_beginTime;
         }
         queuedSurface.iPresentationTimeStamp = presentationTime;
 
-        // Sort queue by presentation time
-        std::sort(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& lhs, auto& rhs) {
-            return lhs.iPresentationTimeStamp < rhs.iPresentationTimeStamp;
-        });
+        if (m_bEnablePTS) {
+            // Sort queue by presentation time
+            std::sort(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& lhs, auto& rhs) {
+                return lhs.iPresentationTimeStamp < rhs.iPresentationTimeStamp;
+            });
 
-        // Get the first no queued surface
-        auto nextSurface = std::find_if(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& queuedSurface) {
-            return !queuedSurface.bIsEnqueued;
-        });
-
-        // Enqueued all possible surfaces
-        while (nextSurface != m_queuedSurfaces.end() && (nextSurface->iPOC == m_iNextPOC || nextSurface->iPOC == 0)) {
-            auto vdpStatus = gVdpFunctionsInstance()->presentationQueueDisplay(
-                m_vdpQueue,
-                nextSurface->surface.getVdpHandle(),
-                0,
-                0,
-                nextSurface->iPresentationTimeStamp
-            );
-            gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't display the sufrace");
-            nextSurface->bIsEnqueued = true;
-
-            // Update the next expected POC
-            if (nextSurface->iPOC == 0) {
-                m_iNextPOC = 1;
-            } else {
-                m_iNextPOC++;
-            }
-
-            // Get the next no queued surface
-            nextSurface = std::find_if(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& queuedSurface) {
+            // Get the first no queued surface
+            auto nextSurface = std::find_if(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& queuedSurface) {
                 return !queuedSurface.bIsEnqueued;
             });
+
+            // Enqueued all possible surfaces
+            while (nextSurface != m_queuedSurfaces.end() && (nextSurface->iPOC == m_iNextPOC || nextSurface->iPOC == 0)) {
+                auto vdpStatus = gVdpFunctionsInstance()->presentationQueueDisplay(
+                    m_vdpQueue,
+                    nextSurface->surface.getVdpHandle(),
+                    0,
+                    0,
+                    nextSurface->iPresentationTimeStamp
+                );
+                gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't display the sufrace");
+                nextSurface->bIsEnqueued = true;
+
+                // Update the next expected POC
+                if (nextSurface->iPOC == 0) {
+                    m_iNextPOC = 1;
+                } else {
+                    m_iNextPOC++;
+                }
+
+                // Get the next no queued surface
+                nextSurface = std::find_if(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& queuedSurface) {
+                    return !queuedSurface.bIsEnqueued;
+                });
+            }
+        } else {
+            auto vdpStatus = gVdpFunctionsInstance()->presentationQueueDisplay(
+                m_vdpQueue,
+                queuedSurface.surface.getVdpHandle(),
+                0,
+                0,
+                queuedSurface.iPresentationTimeStamp
+            );
+            gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[PresentationQueue] Couldn't display the sufrace");
+            queuedSurface.bIsEnqueued = true;
         }
 
         // Delete unused surfaces

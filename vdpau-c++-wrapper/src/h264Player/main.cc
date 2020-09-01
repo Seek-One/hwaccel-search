@@ -33,24 +33,86 @@
 
 #include "local/H264Parser.h"
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        std::cerr << "Missing parameter" << std::endl;
+namespace {
+    void printUsage(const std::string& commandName, const std::string& message) {
+        std::cerr << message << std::endl;
         std::cerr << "Usage:" << std::endl;
-        std::cerr << "\t" << std::string(argv[0]) << " BITSTREAM_FILE" << std::endl;
+        std::cerr << "\t" << commandName << " [OPTION...] BITSTREAM_FILE" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "\t--initial-size <width>x<height>\t\tSet the initial screen size" << std::endl;
+        std::cerr << "\t--disable-pts\t\t\t\tDisplay images in decode order" << std::endl;
+        std::cerr << "\t--enable-pts\t\t\t\tDisplay images in presentation order" << std::endl;
+    }
+}
 
+int main(int argc, char *argv[]) {
+    int iCurrentArg = 1;
+    vw::SizeU screenSize(1280, 720);
+    bool bEnablePTS = true;
+
+    while (iCurrentArg < argc - 1) {
+        std::string szArg = std::string(argv[iCurrentArg]);
+        if (szArg == "--initial-size") {
+            bool bOptionParseFailed = false;
+            std::string szWidth;
+            std::string szHeight;
+
+            if (iCurrentArg >= argc - 1) {
+                bOptionParseFailed = true;
+            }
+            else {
+                std::string szValue = std::string(argv[iCurrentArg + 1]);
+                int iDelimiterIndex = szValue.find_first_of("x");
+                szWidth = szValue.substr(0, iDelimiterIndex);
+                szHeight = szValue.substr(iDelimiterIndex + 1);
+
+                try {
+                    int iWidth = std::stoi(szWidth);
+                    int iHeight = std::stoi(szHeight);
+
+                    screenSize = vw::SizeU(iWidth, iHeight);
+                } catch (std::invalid_argument &e) {
+                    bOptionParseFailed = true;
+                }
+            }
+
+            if (bOptionParseFailed) {
+                printUsage(argv[0], "Wrong size values");
+                return 1;
+            }
+
+            std::cout << "[main] Set initial screen size: " << szWidth << "x" << szHeight << std::endl;
+            iCurrentArg += 2;
+        } else if (szArg == "--disable-pts") {
+            bEnablePTS = false;
+            std::cout << "[main] Display images in decode order" << std::endl;
+            ++iCurrentArg;
+        } else if (szArg == "--enable-pts") {
+            bEnablePTS = true;
+            std::cout << "[main] Display images in presentation order" << std::endl;
+            ++iCurrentArg;
+        } else {
+            printUsage(argv[0], "'" + szArg + "' unknown option");
+            return 1;
+        }
+    }
+
+    if (iCurrentArg != argc - 1) {
+        printUsage(argv[0], "Missing parameter");
         return 1;
     }
 
-    vw::SizeU screenSize(1280, 720);
+    std::string szBitstreamFile(argv[iCurrentArg]);
     vw::Display display(screenSize);
     vw::Device device(display);
     vw::Decoder decoder(device);
     vw::PresentationQueue presentationQueue(display, device);
     presentationQueue.setFramerate(24);
+    presentationQueue.enablePresentationOrderDisplay(bEnablePTS);
     vw::VideoMixer mixer(device, screenSize);
 
-    H264Parser parser(argv[1]);
+    H264Parser parser(szBitstreamFile);
     vw::NalUnit nalUnit;
 
     while (parser.readNextNAL(nalUnit) && display.isOpened()) {

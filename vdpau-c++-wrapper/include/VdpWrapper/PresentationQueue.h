@@ -88,6 +88,13 @@ namespace vw {
         void setFramerate(int iFPS);
 
         /**
+         * @brief Set the order of displayed images
+         *
+         * @param bEnabled If true, the display is in presentation order otherwise in decode order
+         */
+        void enablePresentationOrderDisplay(bool bEnabled);
+
+        /**
          * @brief Enqueue a surface will be displayed
          *
          * This method create a new QueuedSurface and add this
@@ -114,6 +121,7 @@ namespace vw {
         VdpPresentationQueue m_vdpQueue;
         std::deque<QueuedSurface> m_queuedSurfaces;
 
+        bool m_bEnablePTS;
         VdpTime m_beginTime;
         VdpTime m_endTime;
         VdpTime m_framerateStep;
