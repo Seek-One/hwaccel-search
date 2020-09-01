@@ -40,11 +40,11 @@ command convert a image to a NV12 format via FFMPEG:
 ffmpeg -i <input_image> -vf format=nv12 -qscale:v 2 <output_image.yuv>
 
 # You can check your YUV image with this command:
-# ffplay -video_size <width>x<height> -pixel_format nv12 <output_image.yuv>
+ffplay -video_size <width>x<height> -pixel_format nv12 <output_image.yuv>
 ```
 
 To run the program:
-```sh
+```
 ./image-viewer --image-size <width>x<height> image.yuv
 ```
 
@@ -67,7 +67,7 @@ The options `-ss` and `-t` are optional and their purpose, respectively, is to s
 a specific time of input video and to produce a output video with specified duration.
 
 To run the program:
-```sh
+```
 ./h264-player <output_file.h264>
 ```
 
