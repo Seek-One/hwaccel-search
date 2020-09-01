@@ -43,6 +43,7 @@ namespace {
         std::cerr << "\t--initial-size <width>x<height>\t\tSet the initial screen size" << std::endl;
         std::cerr << "\t--disable-pts\t\t\t\tDisplay images in decode order" << std::endl;
         std::cerr << "\t--enable-pts\t\t\t\tDisplay images in presentation order" << std::endl;
+        std::cerr << "\t--fps <FPS>\t\t\t\tSet the video FPS" << std::endl;
     }
 }
 
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]) {
     int iCurrentArg = 1;
     vw::SizeU screenSize(1280, 720);
     bool bEnablePTS = true;
+    int iFPS = 25;
 
     while (iCurrentArg < argc - 1) {
         std::string szArg = std::string(argv[iCurrentArg]);
@@ -84,6 +86,32 @@ int main(int argc, char *argv[]) {
 
             std::cout << "[main] Set initial screen size: " << szWidth << "x" << szHeight << std::endl;
             iCurrentArg += 2;
+        } else if (szArg == "--fps") {
+            bool bOptionParseFailed = false;
+            std::string szFPS;
+            std::string szValue;
+
+            if (iCurrentArg >= argc - 1) {
+                bOptionParseFailed = true;
+            }
+            else {
+                szValue = std::string(argv[iCurrentArg + 1]);
+
+                try {
+                    iFPS = std::stoi(szValue);
+                } catch (std::invalid_argument &e) {
+                    bOptionParseFailed = true;
+                }
+            }
+
+            if (bOptionParseFailed) {
+                printUsage(argv[0], "Wrong FPS value");
+                return 1;
+            }
+
+            std::cout << "[main] Set FPS to: " << szValue << std::endl;
+
+            iCurrentArg += 2;
         } else if (szArg == "--disable-pts") {
             bEnablePTS = false;
             std::cout << "[main] Display images in decode order" << std::endl;
@@ -108,7 +136,7 @@ int main(int argc, char *argv[]) {
     vw::Device device(display);
     vw::Decoder decoder(device);
     vw::PresentationQueue presentationQueue(display, device);
-    presentationQueue.setFramerate(24);
+    presentationQueue.setFramerate(iFPS);
     presentationQueue.enablePresentationOrderDisplay(bEnablePTS);
     vw::VideoMixer mixer(device, screenSize);
 
