@@ -37,16 +37,22 @@ Currently, the software only take image on [NV12 format](https://wiki.videolan.o
 command convert a image to a NV12 format via FFMPEG:
 
 ```
-ffmpeg -i <input_image> -vf format=nv12 <output_image.yuv>
+ffmpeg -i <input_image> -vf format=nv12 -qscale:v 2 <output_image.yuv>
 
 # You can check your YUV image with this command:
-# ffplay -video_size 1920x1080 -pixel_format nv12 <output_image.yuv>
+# ffplay -video_size <width>x<height> -pixel_format nv12 <output_image.yuv>
 ```
 
 To run the program:
 ```sh
-./image-viewer image.yuv
+./image-viewer --image-size <width>x<height> image.yuv
 ```
+
+Some options are available:
+- `--image-size <width>x<height>`       Set the source image size (this option is mandatory and must be specified)
+- `--initial-size <width>x<height>`     Set the initial screen size (default: 1280x720)
+
+**NOTE:** if `--image-size` is incorrect an assertion will be throw.
 
 ## h264Player
 
@@ -60,6 +66,18 @@ ffmpeg -i <input_video> [-ss HH:MM:SS] [-t HH:MM:SS] -c:v copy -vbsf h264_mp4toa
 The options `-ss` and `-t` are optional and their purpose, respectively, is to start the copy at
 a specific time of input video and to produce a output video with specified duration.
 
+To run the program:
+```sh
+./h264-player <output_file.h264>
+```
+
+Some options are available:
+- `--initial-size <width>x<height>`     Set the initial screen size (default: 1280x720)
+- `--disable-pts`                       Display images in decode order (default: false)
+- `--enable-pts`                        Display images in presentation order (default: true)
+- `--fps <FPS>`                         Set the video FPS (default: 25)
+
 **NOTE:** The computation of Presentation Time Stamp (PTS) is a tricky part and it's not the main purpose of this
 project, so it works for video whose POCs increase by 2 every each reference frame but we have some
-difficulties to reading videos whose POCs increase by 1 every each reference frame.
+difficulties to reading videos whose POCs increase by 1 every each reference frame. If you are
+in this case, try to disable this feature with option `--disable-pts`
