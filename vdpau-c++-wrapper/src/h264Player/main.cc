@@ -19,7 +19,9 @@
  * SOFTWARE.
  */
 
+#include <algorithm>
 #include <iostream>
+#include <numeric>
 
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/Decoder.h>
@@ -31,6 +33,7 @@
 #include <VdpWrapper/DecodedSurface.h>
 #include <VdpWrapper/VideoMixer.h>
 
+#include "local/Clock.h"
 #include "local/H264Parser.h"
 
 namespace {
@@ -44,6 +47,7 @@ namespace {
         std::cerr << "\t--disable-pts\t\t\t\tDisplay images in decode order" << std::endl;
         std::cerr << "\t--enable-pts\t\t\t\tDisplay images in presentation order" << std::endl;
         std::cerr << "\t--fps <FPS>\t\t\t\tSet the video FPS" << std::endl;
+        std::cerr << "\t--benchmark\t\t\t\tEnable time benchmark" << std::endl;
     }
 }
 
@@ -52,6 +56,8 @@ int main(int argc, char *argv[]) {
     vw::SizeU screenSize(1280, 720);
     bool bEnablePTS = true;
     int iFPS = 25;
+    bool bBenchmarkEnabled = false;
+    Clock clock;
 
     while (iCurrentArg < argc - 1) {
         std::string szArg = std::string(argv[iCurrentArg]);
@@ -120,6 +126,10 @@ int main(int argc, char *argv[]) {
             bEnablePTS = true;
             std::cout << "[main] Display images in presentation order" << std::endl;
             ++iCurrentArg;
+        } else if (szArg == "--benchmark") {
+            bBenchmarkEnabled = true;
+            std::cout << "[main] Enable benchmark" << std::endl;
+            ++iCurrentArg;
         } else {
             printUsage(argv[0], "'" + szArg + "' unknown option");
             return 1;
@@ -143,6 +153,12 @@ int main(int argc, char *argv[]) {
     H264Parser parser(szBitstreamFile);
     vw::NalUnit nalUnit;
 
+    // Benchmark variables
+    std::chrono::microseconds totalTime;
+    std::vector<std::chrono::microseconds> listDecodeTimes;
+    std::vector<std::chrono::microseconds> listPostProcessTimes;
+    std::vector<std::chrono::microseconds> listDisplayTimes;
+
     while (parser.readNextNAL(nalUnit) && display.isOpened()) {
         // Handle XEvent
         display.processEvent();
@@ -157,9 +173,40 @@ int main(int argc, char *argv[]) {
 
         case vw::NalType::CodedSliceNonIDR:
         case vw::NalType::CodedSliceIDR: {
+            if (bBenchmarkEnabled) {
+                clock.start();
+            }
             vw::DecodedSurface& decodedSurface = decoder.decode(nalUnit);
+            if (bBenchmarkEnabled) {
+                auto elapsedTime = clock.restart();
+                listDecodeTimes.push_back(elapsedTime);
+                totalTime = elapsedTime;
+                std::cout << "[main] Decode time: " << elapsedTime.count() << " µs" << std::endl;
+            }
+
+            if (bBenchmarkEnabled) {
+                clock.start();
+            }
             vw::RenderSurface outputSurface = mixer.process(decodedSurface);
+            if (bBenchmarkEnabled) {
+                auto elapsedTime = clock.restart();
+                listPostProcessTimes.push_back(elapsedTime);
+                totalTime += elapsedTime;
+                std::cout << "[main] Post-process time: " << elapsedTime.count() << " µs" << std::endl;
+            }
+
+            if (bBenchmarkEnabled) {
+                clock.start();
+            }
             presentationQueue.enqueue(std::move(outputSurface));
+            if (bBenchmarkEnabled) {
+                auto elapsedTime = clock.restart();
+                listDisplayTimes.push_back(elapsedTime);
+                totalTime += elapsedTime;
+                std::cout << "[main] Display time: " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms" << std::endl;
+                std::cout << "[main] Total time: " << std::chrono::duration_cast<std::chrono::milliseconds>(totalTime).count() << " ms" << std::endl;
+                std::cout << std::endl;
+            }
             break;
         }
 
@@ -173,6 +220,23 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "[main] End of parsing" << std::endl;
+    if (bBenchmarkEnabled) {
+        std::cout << std::endl;
+        std::cout << "[main] Benchmarks stats:" << std::endl;
+        auto computeState = [](const std::vector<std::chrono::microseconds>& listTimes, const std::string& outputPrefix) {
+            double sum = std::accumulate(listTimes.begin(), listTimes.end(), 0, [](const auto& accumulator, const auto& element) {
+                return element.count() + accumulator;
+            });
+            double mean = sum / listTimes.size();
+            auto [min, max] = std::minmax_element(listTimes.begin(), listTimes.end());
+
+            std::cout << "[main] " << outputPrefix << ": min = " << min->count() << " µs ; max = " << max->count() << " µs ; mean = " << mean << " µs" << std::endl;
+        };
+
+        computeState(listDecodeTimes, "Decode time");
+        computeState(listPostProcessTimes, "Post-process time");
+        computeState(listDisplayTimes, "Display time");
+    }
 
     while (display.isOpened()) {
         display.waitEvent();

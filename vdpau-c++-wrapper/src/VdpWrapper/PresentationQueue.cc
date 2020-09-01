@@ -60,7 +60,7 @@ namespace vw {
     void PresentationQueue::setFramerate(int iFPS) {
         double framerateStepAsSeconds = 1.0 / static_cast<double>(iFPS);
         m_framerateStep = std::round(framerateStepAsSeconds * 1000000000.0);
-        std::cout << "[PresentationQueue] Framerate set to: " << m_framerateStep << std::endl;
+        std::cout << "[PresentationQueue] Framerate set to: " << m_framerateStep << " ns (" << m_framerateStep / 1000000 << " ms)" << std::endl;
     }
 
     void PresentationQueue::enablePresentationOrderDisplay(bool bEnabled) {
