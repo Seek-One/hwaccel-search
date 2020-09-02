@@ -77,10 +77,12 @@ namespace vw {
         VdpOutputSurfaceCreate* outputSurfaceCreate;
         VdpOutputSurfaceDestroy* outputSurfaceDestroy;
         VdpOutputSurfacePutBitsNative* outputSurfacePutBitsNative;
+        VdpOutputSurfaceGetBitsNative* outputSurfaceGetBitsNative;
         VdpOutputSurfaceGetParameters* outputSurfaceGetParameters;
         VdpVideoSurfaceCreate* videoSurfaceCreate;
         VdpVideoSurfaceDestroy* videoSurfaceDestroy;
         VdpVideoSurfacePutBitsYCbCr* videoSurfacePutBitsYCbCr;
+        VdpVideoSurfaceGetBitsYCbCr* videoSurfaceGetBitsYCbCr;
         VdpVideoSurfaceGetParameters* videoSurfaceGetParameters;
         VdpVideoMixerCreate* videoMixerCreate;
         VdpVideoMixerDestroy* videoMixerDestroy;

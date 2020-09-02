@@ -4,7 +4,6 @@
 #include <iostream>
 #include <iterator>
 
-#include <VdpWrapper/ImageBuffer.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
@@ -101,5 +100,26 @@ namespace vw {
         assert(format == VDP_YCBCR_FORMAT_NV12);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
+    }
+
+    ImageBuffer DecodedSurface::copyHardwareMemory() {
+        std::vector<Plane> planes(2);
+        std::vector<uint32_t> linesizes(2);
+
+        // Allocate Planes
+        planes[0].resize(m_size.width * m_size.height);
+        planes[1].resize(m_size.width * m_size.height / 2);
+
+        // Cast to void pointer
+        void* ppPlanes[2] = { planes[0].data(), planes[1].data() };
+        auto vdpStatus = gVdpFunctionsInstance()->videoSurfaceGetBitsYCbCr(
+            m_vdpVideoSurface,
+            VDP_YCBCR_FORMAT_NV12,
+            ppPlanes,
+            linesizes.data()
+        );
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[DecodedSurface] Couldn't retreive GPU data");
+
+        return ImageBuffer(std::move(planes), std::move(linesizes));
     }
 }

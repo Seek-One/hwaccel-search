@@ -23,11 +23,13 @@
 #define VW_DECODED_SURFACE_H
 
 #include <string>
+#include <vector>
 
 #include <vdpau/vdpau.h>
 
-#include <VdpWrapper/Device.h>
-#include <VdpWrapper/Size.h>
+#include "Device.h"
+#include "ImageBuffer.h"
+#include "Size.h"
 
 namespace vw {
     /**
@@ -101,6 +103,13 @@ namespace vw {
          * @return int The current POC value
          */
         int getPictureOrderCount() const;
+
+        /**
+         * @brief Copy the GPU data to an ImageBuffer
+         *
+         * @return ImageBuffer The image buffer filled with GPU data
+         */
+        ImageBuffer copyHardwareMemory();
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);

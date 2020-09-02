@@ -24,7 +24,7 @@
 
 #include <opencv2/imgcodecs.hpp>
 
-#include <VdpWrapper/Size.h>
+#include "Size.h"
 
 namespace vw {
     using Plane = std::vector<uint8_t>;
@@ -52,6 +52,8 @@ namespace vw {
          * @param rawBytes  Raw data must be in NV12 format
          */
         ImageBuffer(SizeU imageSize, const std::vector<uint8_t> &rawBytes);
+
+        ImageBuffer(std::vector<Plane>&& planes, std::vector<uint32_t>&& linesizes);
 
         /**
          * @brief Get the line size for the specified plane

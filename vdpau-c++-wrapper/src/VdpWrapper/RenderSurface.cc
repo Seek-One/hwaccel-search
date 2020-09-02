@@ -8,7 +8,6 @@
 #include <opencv2/imgcodecs.hpp>
 
 #include <VdpWrapper/Device.h>
-#include <VdpWrapper/ImageBuffer.h>
 #include <VdpWrapper/VdpFunctions.h>
 
 namespace vw {
@@ -104,5 +103,25 @@ namespace vw {
         assert(format == VDP_RGBA_FORMAT_B8G8R8A8);
         assert(realSize == m_size); // TODO: VDPAU API says the size may be different form call to align data
                                     //       So we need to handle this case
+    }
+
+    ImageBuffer RenderSurface::copyHardwareMemory() {
+        std::vector<Plane> planes(1);
+        std::vector<uint32_t> linesizes(1);
+
+        // Allocate Planes
+        planes[0].resize(m_size.width * m_size.height * 4);
+
+        // Cast to void pointer
+        void* ppPlanes[1] = { planes[0].data() };
+        auto vdpStatus = gVdpFunctionsInstance()->outputSurfaceGetBitsNative(
+            m_vdpOutputSurface,
+            nullptr,
+            ppPlanes,
+            linesizes.data()
+        );
+        gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[RenderSurface] Couldn't retreive GPU data");
+
+        return ImageBuffer(std::move(planes), std::move(linesizes));
     }
 }

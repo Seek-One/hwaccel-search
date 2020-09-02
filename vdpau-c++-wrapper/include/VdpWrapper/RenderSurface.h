@@ -26,7 +26,8 @@
 
 #include <vdpau/vdpau.h>
 
-#include <VdpWrapper/Size.h>
+#include "ImageBuffer.h"
+#include "Size.h"
 
 namespace vw {
     class Device;
@@ -97,6 +98,13 @@ namespace vw {
          * @return int The current POC value
          */
         int getPictureOrderCount() const;
+
+        /**
+         * @brief Copy the GPU data to an ImageBuffer
+         *
+         * @return ImageBuffer The image buffer filled with GPU data
+         */
+        ImageBuffer copyHardwareMemory();
 
     private:
         void allocateVdpSurface(Device& device, const SizeU& size);

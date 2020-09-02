@@ -50,6 +50,8 @@ namespace {
         std::cerr << "\t--fps <FPS>\t\t\t\tSet the video FPS" << std::endl;
         std::cerr << "\t--benchmark\t\t\t\tEnable time benchmark" << std::endl;
         std::cerr << "\t--manual-framerate\t\t\t\tThe framerate is handle by the program and not by VDPAU" << std::endl;
+        std::cerr << "\t--copy-yuv\t\t\t\tCopy YUV images from GPU memory" << std::endl;
+        std::cerr << "\t--copy-rgba\t\t\t\tCopy RGBA images from GPU memory" << std::endl;
     }
 }
 
@@ -60,6 +62,8 @@ int main(int argc, char *argv[]) {
     int iFPS = 25;
     bool bBenchmarkEnabled = false;
     bool bManualFramerate = false;
+    bool bCopyYUV = false;
+    bool bCopyBGRA = false;
     Clock clock;
 
     while (iCurrentArg < argc - 1) {
@@ -137,6 +141,14 @@ int main(int argc, char *argv[]) {
             bManualFramerate = true;
             std::cout << "[main] Framerate not handle by VDPAU" << std::endl;
             ++iCurrentArg;
+        }  else if (szArg == "--copy-yuv") {
+            bCopyYUV = true;
+            std::cout << "[main] Copy YUV images from GPU memory" << std::endl;
+            ++iCurrentArg;
+        }  else if (szArg == "--copy-bgra") {
+            bCopyBGRA = true;
+            std::cout << "[main] Copy BGRA images from GPU memory" << std::endl;
+            ++iCurrentArg;
         } else {
             printUsage(argv[0], "'" + szArg + "' unknown option");
             return 1;
@@ -168,7 +180,9 @@ int main(int argc, char *argv[]) {
     // Benchmark variables
     std::chrono::microseconds totalTime;
     std::vector<std::chrono::microseconds> listDecodeTimes;
+    std::vector<std::chrono::microseconds> listDecodedSurfaceTransferTimes;
     std::vector<std::chrono::microseconds> listPostProcessTimes;
+    std::vector<std::chrono::microseconds> listRenderSurfaceTransferTimes;
     std::vector<std::chrono::microseconds> listDisplayTimes;
     std::vector<std::chrono::microseconds> listTotalTimes;
 
@@ -189,6 +203,7 @@ int main(int argc, char *argv[]) {
             if (bBenchmarkEnabled) {
                 clock.start();
             }
+
             vw::DecodedSurface& decodedSurface = decoder.decode(nalUnit);
             if (bBenchmarkEnabled) {
                 auto elapsedTime = clock.restart();
@@ -197,9 +212,16 @@ int main(int argc, char *argv[]) {
                 std::cout << "[main] Decode time: " << elapsedTime.count() << " µs" << std::endl;
             }
 
-            if (bBenchmarkEnabled) {
-                clock.start();
+            if (bCopyYUV) {
+                decodedSurface.copyHardwareMemory();
+                if (bBenchmarkEnabled) {
+                    auto elapsedTime = clock.restart();
+                    listDecodedSurfaceTransferTimes.push_back(elapsedTime);
+                    totalTime += elapsedTime;
+                    std::cout << "[main] Copy YUV image from GPU time: " << elapsedTime.count() << " µs" << std::endl;
+                }
             }
+
             vw::RenderSurface outputSurface = mixer.process(decodedSurface);
             if (bBenchmarkEnabled) {
                 auto elapsedTime = clock.restart();
@@ -208,9 +230,16 @@ int main(int argc, char *argv[]) {
                 std::cout << "[main] Post-process time: " << elapsedTime.count() << " µs" << std::endl;
             }
 
-            if (bBenchmarkEnabled) {
-                clock.start();
+            if (bCopyBGRA) {
+                outputSurface.copyHardwareMemory();
+                if (bBenchmarkEnabled) {
+                    auto elapsedTime = clock.restart();
+                    listRenderSurfaceTransferTimes.push_back(elapsedTime);
+                    totalTime += elapsedTime;
+                    std::cout << "[main] Copy BGRA image from GPU time: " << elapsedTime.count() << " µs" << std::endl;
+                }
             }
+
             presentationQueue.enqueue(std::move(outputSurface));
             if (bBenchmarkEnabled) {
                 auto elapsedTime = clock.restart();
@@ -253,7 +282,13 @@ int main(int argc, char *argv[]) {
         };
 
         computeState(listDecodeTimes, "Decode time");
+        if (bCopyYUV) {
+            computeState(listDecodedSurfaceTransferTimes, "Decoded surfaces transfert time");
+        }
         computeState(listPostProcessTimes, "Post-process time");
+        if (bCopyBGRA) {
+            computeState(listRenderSurfaceTransferTimes, "Render surfaces transfert time");
+        }
         computeState(listDisplayTimes, "Display time");
         computeState(listTotalTimes, "Total time");
     }

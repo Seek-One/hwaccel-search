@@ -9,6 +9,12 @@ namespace vw {
         storeNV12Image(imageSize, rawBytes);
     }
 
+    ImageBuffer::ImageBuffer(std::vector<Plane>&& planes, std::vector<uint32_t>&& linesizes)
+    : m_planes(planes)
+    , m_lineSizes(linesizes) {
+
+    }
+
     uint32_t ImageBuffer::getLineSize(uint32_t index) const {
         if (index >= m_lineSizes.size()) {
             throw std::runtime_error("[ImageBuffer] Line size index out of bounds");

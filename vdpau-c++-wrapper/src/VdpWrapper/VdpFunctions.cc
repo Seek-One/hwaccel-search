@@ -15,10 +15,12 @@ namespace vw {
     , outputSurfaceCreate(nullptr)
     , outputSurfaceDestroy(nullptr)
     , outputSurfacePutBitsNative(nullptr)
+    , outputSurfaceGetBitsNative(nullptr)
     , outputSurfaceGetParameters(nullptr)
     , videoSurfaceCreate(nullptr)
     , videoSurfaceDestroy(nullptr)
     , videoSurfacePutBitsYCbCr(nullptr)
+    , videoSurfaceGetBitsYCbCr(nullptr)
     , videoSurfaceGetParameters(nullptr)
     , videoMixerCreate(nullptr)
     , videoMixerDestroy(nullptr)
@@ -42,10 +44,12 @@ namespace vw {
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_PUT_BITS_NATIVE);
+        storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_GET_BITS_NATIVE);
         storeFunction(vdpDevice, VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_DESTROY);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_PUT_BITS_Y_CB_CR);
+        storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_SURFACE_GET_PARAMETERS);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_CREATE);
         storeFunction(vdpDevice, VDP_FUNC_ID_VIDEO_MIXER_DESTROY);
@@ -118,6 +122,10 @@ namespace vw {
                 outputSurfacePutBitsNative = reinterpret_cast<VdpOutputSurfacePutBitsNative*>(func);
                 break;
 
+            case VDP_FUNC_ID_OUTPUT_SURFACE_GET_BITS_NATIVE:
+                outputSurfaceGetBitsNative = reinterpret_cast<VdpOutputSurfaceGetBitsNative*>(func);
+                break;
+
             case VDP_FUNC_ID_OUTPUT_SURFACE_GET_PARAMETERS:
                 outputSurfaceGetParameters = reinterpret_cast<VdpOutputSurfaceGetParameters*>(func);
                 break;
@@ -132,6 +140,10 @@ namespace vw {
 
             case VDP_FUNC_ID_VIDEO_SURFACE_PUT_BITS_Y_CB_CR:
                 videoSurfacePutBitsYCbCr = reinterpret_cast<VdpVideoSurfacePutBitsYCbCr*>(func);
+                break;
+
+            case VDP_FUNC_ID_VIDEO_SURFACE_GET_BITS_Y_CB_CR:
+                videoSurfaceGetBitsYCbCr = reinterpret_cast<VdpVideoSurfaceGetBitsYCbCr*>(func);
                 break;
 
             case VDP_FUNC_ID_VIDEO_SURFACE_GET_PARAMETERS:
