@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <thread>
 
 #include <VdpWrapper/Display.h>
 #include <VdpWrapper/Decoder.h>
@@ -48,6 +49,7 @@ namespace {
         std::cerr << "\t--enable-pts\t\t\t\tDisplay images in presentation order" << std::endl;
         std::cerr << "\t--fps <FPS>\t\t\t\tSet the video FPS" << std::endl;
         std::cerr << "\t--benchmark\t\t\t\tEnable time benchmark" << std::endl;
+        std::cerr << "\t--manual-framerate\t\t\t\tThe framerate is handle by the program and not by VDPAU" << std::endl;
     }
 }
 
@@ -57,6 +59,7 @@ int main(int argc, char *argv[]) {
     bool bEnablePTS = true;
     int iFPS = 25;
     bool bBenchmarkEnabled = false;
+    bool bManualFramerate = false;
     Clock clock;
 
     while (iCurrentArg < argc - 1) {
@@ -130,6 +133,10 @@ int main(int argc, char *argv[]) {
             bBenchmarkEnabled = true;
             std::cout << "[main] Enable benchmark" << std::endl;
             ++iCurrentArg;
+        } else if (szArg == "--manual-framerate") {
+            bManualFramerate = true;
+            std::cout << "[main] Framerate not handle by VDPAU" << std::endl;
+            ++iCurrentArg;
         } else {
             printUsage(argv[0], "'" + szArg + "' unknown option");
             return 1;
@@ -147,7 +154,12 @@ int main(int argc, char *argv[]) {
     vw::Decoder decoder(device);
     vw::PresentationQueue presentationQueue(display, device);
     presentationQueue.setFramerate(iFPS);
-    presentationQueue.enablePresentationOrderDisplay(bEnablePTS);
+    if (!bEnablePTS) {
+        presentationQueue.enablePresentationOrderDisplay(bEnablePTS);
+    }
+    if (bManualFramerate) {
+        presentationQueue.enableDirectOutput(bManualFramerate);
+    }
     vw::VideoMixer mixer(device, screenSize);
 
     H264Parser parser(szBitstreamFile);
@@ -158,6 +170,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::chrono::microseconds> listDecodeTimes;
     std::vector<std::chrono::microseconds> listPostProcessTimes;
     std::vector<std::chrono::microseconds> listDisplayTimes;
+    std::vector<std::chrono::microseconds> listTotalTimes;
 
     while (parser.readNextNAL(nalUnit) && display.isOpened()) {
         // Handle XEvent
@@ -203,9 +216,15 @@ int main(int argc, char *argv[]) {
                 auto elapsedTime = clock.restart();
                 listDisplayTimes.push_back(elapsedTime);
                 totalTime += elapsedTime;
+                listTotalTimes.push_back(totalTime);
                 std::cout << "[main] Display time: " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms" << std::endl;
                 std::cout << "[main] Total time: " << std::chrono::duration_cast<std::chrono::milliseconds>(totalTime).count() << " ms" << std::endl;
                 std::cout << std::endl;
+            }
+
+            if (bManualFramerate) {
+                std::chrono::duration<double> framerate(1.0 / iFPS);
+                std::this_thread::sleep_for(framerate);
             }
             break;
         }
@@ -236,6 +255,7 @@ int main(int argc, char *argv[]) {
         computeState(listDecodeTimes, "Decode time");
         computeState(listPostProcessTimes, "Post-process time");
         computeState(listDisplayTimes, "Display time");
+        computeState(listTotalTimes, "Total time");
     }
 
     while (display.isOpened()) {

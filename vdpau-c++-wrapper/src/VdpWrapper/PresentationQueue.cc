@@ -20,6 +20,7 @@ namespace vw {
 
     PresentationQueue::PresentationQueue(Display& display, Device &device)
     : m_bEnablePTS(true)
+    , m_bDirectOutput(false)
     , m_beginTime(0)
     , m_endTime(0)
     , m_framerateStep(0)
@@ -67,6 +68,10 @@ namespace vw {
         m_bEnablePTS = bEnabled;
     }
 
+    void PresentationQueue::enableDirectOutput(bool bDirectOutput) {
+        m_bDirectOutput = bDirectOutput;
+    }
+
     bool PresentationQueue::enqueue(RenderSurface surface) {
         // Keep the ownership of the surface
         m_queuedSurfaces.emplace_back(std::move(surface));
@@ -88,7 +93,7 @@ namespace vw {
         // m_framerateStep * iPOC and we updated the m_endTime if needed
 
         // If it's a new sequence
-        if (m_bEnablePTS && iPOC == 0) {
+        if (m_bEnablePTS && iPOC == 0 && !m_bDirectOutput) {
             // If it's the first sequence
             if (m_endTime == 0) {
                 m_beginTime = getCurrentTime();
@@ -97,14 +102,14 @@ namespace vw {
             }
             m_endTime = m_beginTime + m_framerateStep;
             presentationTime = m_beginTime;
-        } else if (m_bEnablePTS && iPOC > 0) {
+        } else if (m_bEnablePTS && iPOC > 0 && !m_bDirectOutput) {
             presentationTime = m_beginTime + m_framerateStep * iPOC;
             if (presentationTime >= m_endTime) {
                 m_endTime = presentationTime + m_framerateStep;
             }
         }
-        // If no POC specified
-        else {
+        // If use DTS instead of PTS
+        else if (!m_bDirectOutput) {
             // Initialize the first timestamp
             if (m_beginTime == 0) {
                 m_beginTime = getCurrentTime();
@@ -115,9 +120,13 @@ namespace vw {
             }
             presentationTime = m_beginTime;
         }
+        // If we display the image directly
+        else {
+            presentationTime = getCurrentTime();
+        }
         queuedSurface.iPresentationTimeStamp = presentationTime;
 
-        if (m_bEnablePTS) {
+        if (m_bEnablePTS && !m_bDirectOutput) {
             // Sort queue by presentation time
             std::sort(m_queuedSurfaces.begin(), m_queuedSurfaces.end(), [](auto& lhs, auto& rhs) {
                 return lhs.iPresentationTimeStamp < rhs.iPresentationTimeStamp;

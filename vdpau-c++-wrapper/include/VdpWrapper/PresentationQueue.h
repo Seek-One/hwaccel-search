@@ -95,6 +95,13 @@ namespace vw {
         void enablePresentationOrderDisplay(bool bEnabled);
 
         /**
+         * @brief Enable the direct ouput
+         *
+         * @param bDirectOutput If true, the surface will be displayed immediately otherwise the image respect the framerate
+         */
+        void enableDirectOutput(bool bDirectOutput);
+
+        /**
          * @brief Enqueue a surface will be displayed
          *
          * This method create a new QueuedSurface and add this
@@ -122,6 +129,7 @@ namespace vw {
         std::deque<QueuedSurface> m_queuedSurfaces;
 
         bool m_bEnablePTS;
+        bool m_bDirectOutput;
         VdpTime m_beginTime;
         VdpTime m_endTime;
         VdpTime m_framerateStep;
