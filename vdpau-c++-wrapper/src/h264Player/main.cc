@@ -48,8 +48,8 @@ namespace {
         std::cerr << "\t--disable-pts\t\t\t\tDisplay images in decode order" << std::endl;
         std::cerr << "\t--enable-pts\t\t\t\tDisplay images in presentation order" << std::endl;
         std::cerr << "\t--fps <FPS>\t\t\t\tSet the video FPS" << std::endl;
-        std::cerr << "\t--benchmark\t\t\t\tEnable time benchmark" << std::endl;
-        std::cerr << "\t--manual-framerate\t\t\t\tThe framerate is handle by the program and not by VDPAU" << std::endl;
+        std::cerr << "\t--benchmark\t\t\t\tEnable times benchmark" << std::endl;
+        std::cerr << "\t--manual-framerate\t\t\tThe framerate is handle by the program and not by VDPAU" << std::endl;
         std::cerr << "\t--copy-yuv\t\t\t\tCopy YUV images from GPU memory" << std::endl;
         std::cerr << "\t--copy-rgba\t\t\t\tCopy RGBA images from GPU memory" << std::endl;
     }

@@ -73,9 +73,13 @@ To run the program:
 
 Some options are available:
 - `--initial-size <width>x<height>`     Set the initial screen size (default: 1280x720)
-- `--disable-pts`                       Display images in decode order (default: false)
-- `--enable-pts`                        Display images in presentation order (default: true)
+- `--disable-pts`                       Display images in decode order (default: disable)
+- `--enable-pts`                        Display images in presentation order (default: enable)
 - `--fps <FPS>`                         Set the video FPS (default: 25)
+- `--benchmark`                         Enable times benchmark (default: disable)
+- `--manual-framerate`                  The framerate is handle by the program and not by VDPAU (default: disable)
+- `--copy-yuv`                          Copy YUV images from GPU memory (default: disable)
+- `--copy-rgba`                         Copy RGBA images from GPU memory (default: disable)
 
 **NOTE:** The computation of Presentation Time Stamp (PTS) is a tricky part and it's not the main purpose of this
 project, so it works for video whose POCs increase by 2 every each reference frame but we have some
