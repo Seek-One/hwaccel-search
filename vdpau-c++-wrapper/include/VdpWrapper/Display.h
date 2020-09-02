@@ -24,7 +24,7 @@
 
 #include <X11/Xlib.h>
 
-#include <VdpWrapper/Size.h>
+#include "Size.h"
 
 namespace vw {
     /**

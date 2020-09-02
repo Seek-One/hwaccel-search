@@ -24,7 +24,7 @@
 
 #include <vdpau/vdpau.h>
 
-#include <VdpWrapper/Size.h>
+#include "Size.h"
 
 namespace vw {
     class Device;
