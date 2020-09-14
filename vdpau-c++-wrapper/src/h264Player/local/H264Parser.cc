@@ -187,6 +187,18 @@ void H264Parser::updateH264Infos() {
                     }
                 }
             }
+        } else {
+            for (int i = 0; i < 8; ++i) {
+                if (i < 6) {
+                    for (int j = 0; j < 16; ++j) {
+                        m_h264Infos.scaling_lists_4x4[i][j] = 16;
+                    }
+                } else {
+                    for (int j = 0; j < 64; ++j) {
+                        m_h264Infos.scaling_lists_8x8[i - 6][j] = 16;
+                    }
+                }
+            }
         }
 
         m_h264Infos.bFirstSPSReceived = true;
