@@ -22,10 +22,50 @@
 #include "H264Parser.h"
 
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <iostream>
 #include <stdexcept>
+
+namespace {
+    // Default scaling_lists according to Table 7-2
+    constexpr uint8_t default_4x4_intra[16] = {
+         6,13,20,28,
+        13,20,28,32,
+        20,28,32,37,
+        28,32,37,42
+    };
+
+    constexpr uint8_t default_4x4_inter[16] = {
+        10,14,20,24,
+        14,20,24,27,
+        20,24,27,30,
+        24,27,30,34
+    };
+
+    constexpr uint8_t default_8x8_intra[64] = {
+         6,10,13,16,18,23,25,27,
+        10,11,16,18,23,25,27,29,
+        13,16,18,23,25,27,29,31,
+        16,18,23,25,27,29,31,33,
+        18,23,25,27,29,31,33,36,
+        23,25,27,29,31,33,36,38,
+        25,27,29,31,33,36,38,40,
+        27,29,31,33,36,38,40,42
+    };
+
+    constexpr uint8_t default_8x8_inter[64] = {
+        9,13,15,17,19,21,22,24,
+        13,13,17,19,21,22,24,25,
+        15,17,19,21,22,24,25,27,
+        17,19,21,22,24,25,27,28,
+        19,21,22,24,25,27,28,30,
+        21,22,24,25,27,28,30,32,
+        22,24,25,27,28,30,32,33,
+        24,25,27,28,30,32,33,35
+    };
+}
 
 H264Parser::H264Parser(const std::string& filename)
 : m_h264Stream(h264_new())
@@ -36,6 +76,20 @@ H264Parser::H264Parser(const std::string& filename)
 , m_prevFrameNumOffset(0)
 , m_prevFrameNum(0)
 , m_iPrevMMCO(0) {
+    // Set the scaling lists to Flat_4x4_16 and Flat_8x8_16
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < 16; ++j) {
+            m_h264Stream->sps->ScalingList4x4[i][j] = 16;
+            m_h264Stream->pps->ScalingList4x4[i][j] = 16;
+        }
+        for (int j = 0; j < 64; ++j) {
+            m_h264Stream->sps->ScalingList8x8[i][j] = 16;
+            if (i < 2) {
+                m_h264Stream->pps->ScalingList8x8[i][j] = 16;
+            }
+        }
+    }
+
     std::ifstream bitstreamFile(filename, std::ios::binary);
     if (!bitstreamFile.good()) {
         throw std::runtime_error("[H264Parser] Couldn't open the bitstream file");
@@ -85,7 +139,7 @@ bool H264Parser::readNextNAL(vw::NalUnit &nalUnit) {
 void H264Parser::updateH264Infos() {
     vw::NalType nalType = static_cast<vw::NalType>(m_h264Stream->nal->nal_unit_type);
     switch (nalType) {
-    case vw::NalType::SPS:
+    case vw::NalType::SPS: {
         m_h264Infos.num_ref_frames = m_h264Stream->sps->num_ref_frames;
         m_h264Infos.mb_adaptive_frame_field_flag = m_h264Stream->sps->mb_adaptive_frame_field_flag;
         m_h264Infos.frame_mbs_only_flag = m_h264Stream->sps->frame_mbs_only_flag;
@@ -95,19 +149,43 @@ void H264Parser::updateH264Infos() {
         m_h264Infos.delta_pic_order_always_zero_flag = m_h264Stream->sps->delta_pic_order_always_zero_flag;
         m_h264Infos.direct_8x8_inference_flag = m_h264Stream->sps->direct_8x8_inference_flag;
 
-        // FIXME: h264bitstream do not compute correctly the scaling list
-        //        they are always at zero. So I set manually the default scaling list
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 16; j++) {
-                // m_h264Infos.scaling_lists_4x4[i][j] = m_h264Stream->sps->ScalingList4x4[i][j];
-                m_h264Infos.scaling_lists_4x4[i][j] = 16;
-            }
-        }
+        // Set fallback rules set A - cf table 7-2 from ref H264
+        const uint8_t* fallbackRules[12] = {
+            default_4x4_intra,
+            m_h264Infos.scaling_lists_4x4[0],
+            m_h264Infos.scaling_lists_4x4[1],
+            default_4x4_inter,
+            m_h264Infos.scaling_lists_4x4[3],
+            m_h264Infos.scaling_lists_4x4[4],
+            default_8x8_intra,
+            default_8x8_inter,
+            m_h264Infos.scaling_lists_8x8[0],
+            m_h264Infos.scaling_lists_8x8[1],
+            m_h264Infos.scaling_lists_8x8[2],
+            m_h264Infos.scaling_lists_8x8[3]
+        };
 
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 64; j++) {
-                // m_h264Infos.scaling_lists_8x8[i][j] = m_h264Stream->sps->ScalingList8x8[i][j];
-                m_h264Infos.scaling_lists_8x8[i][j] = 16;
+        // Set the ScalingLists
+        if (m_h264Stream->sps->seq_scaling_matrix_present_flag) {
+            for (int i = 0; i < 8; ++i) {
+                if (!m_h264Stream->sps->seq_scaling_list_present_flag[i]) {
+                    if (i < 6) {
+                        std::memcpy(m_h264Infos.scaling_lists_4x4[i], fallbackRules[i], sizeof(uint8_t) * 16);
+                    } else {
+                        std::memcpy(m_h264Infos.scaling_lists_8x8[i - 6], fallbackRules[i], sizeof(uint8_t) * 64);
+                    }
+                }
+                else {
+                    if (i < 6) {
+                        for (int j = 0; j < 16; ++j) {
+                            m_h264Infos.scaling_lists_4x4[i][j] = m_h264Stream->sps->ScalingList4x4[i][j];
+                        }
+                    } else {
+                        for (int j = 0; j < 64; ++j) {
+                            m_h264Infos.scaling_lists_8x8[i - 6][j] = m_h264Stream->sps->ScalingList8x8[i - 6][j];
+                        }
+                    }
+                }
             }
         }
 
@@ -115,8 +193,9 @@ void H264Parser::updateH264Infos() {
         m_h264Infos.iProfile = m_h264Stream->sps->profile_idc;
         computePicutreSize();
         break;
+    }
 
-    case vw::NalType::PPS:
+    case vw::NalType::PPS: {
         m_h264Infos.constrained_intra_pred_flag = m_h264Stream->pps->constrained_intra_pred_flag;
         m_h264Infos.weighted_pred_flag = m_h264Stream->pps->weighted_pred_flag;
         m_h264Infos.weighted_bipred_idc = m_h264Stream->pps->weighted_bipred_idc;
@@ -131,22 +210,49 @@ void H264Parser::updateH264Infos() {
         m_h264Infos.deblocking_filter_control_present_flag = m_h264Stream->pps->deblocking_filter_control_present_flag;
         m_h264Infos.redundant_pic_cnt_present_flag = m_h264Stream->pps->redundant_pic_cnt_present_flag;
 
-        // FIXME: h264bitstream do not compute correctly the scaling list
-        //        they are always at zero. So I set manually the default scaling list
-        // for(int i=0; i<6; i++) {
-        //     for(int j=0; j<16; j++) {
-        //         m_h264Infos.scaling_lists_4x4[i][j] = m_h264Stream->pps->ScalingList4x4[i][j];
-        //     }
-        // }
+        // Set fallback rules set A - cf table 7-2 from ref H264
+        const uint8_t* fallbackRules[12] = {
+            default_4x4_intra,
+            m_h264Infos.scaling_lists_4x4[0],
+            m_h264Infos.scaling_lists_4x4[1],
+            default_4x4_inter,
+            m_h264Infos.scaling_lists_4x4[3],
+            m_h264Infos.scaling_lists_4x4[4],
+            default_8x8_intra,
+            default_8x8_inter,
+            m_h264Infos.scaling_lists_8x8[0],
+            m_h264Infos.scaling_lists_8x8[1],
+            m_h264Infos.scaling_lists_8x8[2],
+            m_h264Infos.scaling_lists_8x8[3]
+        };
 
-        // for(int i=0; i<2; i++) {
-        //     for(int j=0; j<64; j++) {
-        //         m_h264Infos.scaling_lists_8x8[i][j] = m_h264Stream->pps->ScalingList8x8[i][j];
-        //     }
-        // }
+        // Set the ScalingLists
+        if (m_h264Stream->pps->pic_scaling_matrix_present_flag) {
+            for (int i = 0; i < 8; ++i) {
+                if (!m_h264Stream->pps->pic_scaling_list_present_flag[i]) {
+                    if (i < 6) {
+                        std::memcpy(m_h264Infos.scaling_lists_4x4[i], fallbackRules[i], sizeof(uint8_t) * 16);
+                    } else {
+                        std::memcpy(m_h264Infos.scaling_lists_8x8[i - 6], fallbackRules[i], sizeof(uint8_t) * 64);
+                    }
+                }
+                else {
+                    if (i < 6) {
+                        for (int j = 0; j < 16; ++j) {
+                            m_h264Infos.scaling_lists_4x4[i][j] = m_h264Stream->pps->ScalingList4x4[i][j];
+                        }
+                    } else {
+                        for (int j = 0; j < 64; ++j) {
+                            m_h264Infos.scaling_lists_8x8[i - 6][j] = m_h264Stream->pps->ScalingList8x8[i - 6][j];
+                        }
+                    }
+                }
+            }
+        }
 
         m_h264Infos.bFirstPPSReceived = true;
         break;
+    }
 
     case vw::NalType::CodedSliceIDR:
     case vw::NalType::CodedSliceNonIDR: {
