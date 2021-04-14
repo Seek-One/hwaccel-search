@@ -106,6 +106,9 @@ namespace vw {
         std::vector<Plane> planes(2);
         std::vector<uint32_t> linesizes(2);
 
+        linesizes[0] = m_size.width;
+        linesizes[1] = m_size.width;
+
         // Allocate Planes
         planes[0].resize(m_size.width * m_size.height);
         planes[1].resize(m_size.width * m_size.height / 2);
