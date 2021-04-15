@@ -16,9 +16,23 @@ namespace vw {
 
     }
 
-    DecodedPicture& DecodedPictureBuffer::createDecodedPicture(Device& device, const H264Infos &infos) {
-        m_vecDecodedPictures.emplace_front(device, infos.pictureSize);
-        auto& decodedPicture = m_vecDecodedPictures.front();
+    DecodedPictureBuffer::DecodedPictureBuffer()
+    : m_currentIndex(0) {
+    }
+
+    DecodedPictureBuffer::~DecodedPictureBuffer() {
+        m_listDecodedPictures.clear();
+        m_listIndexReferencePictures.clear();
+    }
+
+    DecodedPicture& DecodedPictureBuffer::getNextDecodedPicture(Device& device, const H264Infos &infos) {
+        // Initialize the ring buffer
+        if (m_listDecodedPictures.size() == 0) {
+            initializeSurfacePool(device, infos.pictureSize);
+        }
+
+        assert(m_currentIndex >= 0 && m_currentIndex < PoolSize);
+        auto& decodedPicture = m_listDecodedPictures[m_currentIndex];
 
         decodedPicture.referenceType = infos.referenceType;
         decodedPicture.iFrameNum = infos.frame_num;
@@ -33,27 +47,33 @@ namespace vw {
             decodedPicture.iPictureOrderCount = std::min(decodedPicture.iTopFieldOrderCount, decodedPicture.iBottomFieldOrderCount);
         }
 
-        // Sliding window
-        // TODO: must be refactored
-        while (m_vecDecodedPictures.size() > 16) {
-            m_vecDecodedPictures.pop_back();
+        // Add the image to reference picture list
+        if (decodedPicture.referenceType != PictureReferenceType::NoReference) {
+            // Sliding window
+            m_listIndexReferencePictures.push_front(m_currentIndex);
+            while (m_listIndexReferencePictures.size() > 16) {
+                m_listIndexReferencePictures.pop_back();
+            }
         }
+
+        m_currentIndex = (m_currentIndex + 1) % PoolSize;
 
         return decodedPicture;
     }
 
     void DecodedPictureBuffer::updateReferenceList(H264Infos &infos) {
-        int iCurrentReferenceIndex = 0;
-        for (auto it = m_vecDecodedPictures.begin() + 1; it != m_vecDecodedPictures.end(); ++it) {
-            const auto& decodedPicture = *it;
+        int h264InfoRefIndex = 0;
 
-            if (decodedPicture.referenceType == PictureReferenceType::NoReference) {
-                continue;
-            }
+        // Skip the first ref frame
+        for (std::size_t i = 1; i < m_listIndexReferencePictures.size(); ++i) {
+            int refDBPIndex = m_listIndexReferencePictures[i];
 
-            assert(iCurrentReferenceIndex < 16);
+            assert(refDBPIndex >= 0 && refDBPIndex < PoolSize);
+            assert(h264InfoRefIndex < 16);
 
-            auto& referenceFrame = infos.referenceFrames[iCurrentReferenceIndex++];
+            const auto& decodedPicture = m_listDecodedPictures[refDBPIndex];
+
+            auto& referenceFrame = infos.referenceFrames[h264InfoRefIndex++];
             referenceFrame.is_long_term = VDP_FALSE;
             referenceFrame.top_is_reference = (static_cast<uint8_t>(decodedPicture.referenceType) & static_cast<uint8_t>(PictureReferenceType::TopReference) ? VDP_TRUE : VDP_FALSE);
             referenceFrame.bottom_is_reference = (static_cast<uint8_t>(decodedPicture.referenceType) & static_cast<uint8_t>(PictureReferenceType::BottomReference) ? VDP_TRUE : VDP_FALSE);
@@ -65,6 +85,12 @@ namespace vw {
     }
 
     void DecodedPictureBuffer::clear() {
-        m_vecDecodedPictures.clear();
+        m_listIndexReferencePictures.clear();
+    }
+
+    void DecodedPictureBuffer::initializeSurfacePool(Device& device, const SizeU& surfaceSize) {
+        for (int i = 0; i < PoolSize; ++i) {
+            m_listDecodedPictures.emplace_back(device, surfaceSize);
+        }
     }
 }

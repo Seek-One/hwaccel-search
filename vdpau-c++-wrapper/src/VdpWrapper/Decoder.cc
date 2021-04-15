@@ -76,7 +76,7 @@ namespace vw {
         }
 
         // Create a new decoded picture
-        auto& newDecodedPicture = m_decodedPicturesBuffer.createDecodedPicture(m_device, infos);
+        auto& newDecodedPicture = m_decodedPicturesBuffer.getNextDecodedPicture(m_device, infos);
 
         // Update the VdpInfos to set the references frames
         H264Infos infosUpdated = infos;

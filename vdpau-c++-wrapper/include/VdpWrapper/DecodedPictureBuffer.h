@@ -23,11 +23,11 @@
 #define VW_DECODED_PICTURE_BUFFER_H
 
 #include <deque>
+#include <vector>
 
 #include "NalUnit.h"
 #include "Size.h"
 #include "DecodedSurface.h"
-
 
 namespace vw {
     class Device;
@@ -64,9 +64,9 @@ namespace vw {
     /**
      * @brief DecodedPictureBuffer aims to handle a Decoded Picture Buffer (DPB)
      *
-     * The class keep a collection of DecodedPicture ordered by desc decoding order.
-     * The limit size for the DPB is 16 pictures, when the max capacity is reached
-     * the class remove the oldest picture (sliding window).
+     * The class allocate a pool of DecodedPicture and reuse the oldest one. Hence
+     * we have only one surface allocation and we avoid some artifacts during the
+     * decoding process.
      * Currently the class doesn't handle the long term reference and the Memory
      * Management Control Operation (MMCO).
      *
@@ -74,8 +74,18 @@ namespace vw {
      */
     class DecodedPictureBuffer {
     public:
-        DecodedPictureBuffer() = default;
-        ~DecodedPictureBuffer() = default;
+        /**
+         * @brief Construct a new DecodedPictureBuffer object
+         *
+         * @warning The constructor do not allocate any DecodedPicture. The allocation
+         * is do by initializeSurfacePool() method.
+         */
+        DecodedPictureBuffer();
+
+        /**
+         * @brief Destroy the DecodedPictureBuffer object
+         */
+        ~DecodedPictureBuffer();
 
         DecodedPictureBuffer(const DecodedPictureBuffer&) = delete;
         DecodedPictureBuffer(DecodedPictureBuffer&&) = delete;
@@ -84,19 +94,15 @@ namespace vw {
         DecodedPictureBuffer& operator=(DecodedPictureBuffer&&) = delete;
 
         /**
-         * @brief Create a new DecodedPicture
+         * @brief Create the next available decoded surface
          *
-         * The new created DecodedPicture is automatically added to the DPB even if it's not
-         * a reference picture.
-         *
-         * @todo Don't add the decoded picture here. Juste return the structure by moving and
-         * after, if the picture is a reference add it to the DPB.
+         * The buffer acts like a ring buffer, we get here the next available surface.
          *
          * @param device A reference to a valid Device
          * @param infos The usefull H264 bitstream informations
-         * @return DecodedPicture& A reference to the new DecodedPicture
+         * @return DecodedPicture& A reference to a DecodedPicture
          */
-        DecodedPicture& createDecodedPicture(Device& device, const H264Infos &infos);
+        DecodedPicture& getNextDecodedPicture(Device& device, const H264Infos &infos);
 
         /**
          * @brief Update the H264Infos passed in parameter
@@ -115,8 +121,26 @@ namespace vw {
          */
         void clear();
 
+        static constexpr int PoolSize = 16; ///< Arbitrary DecodedPicture pool size
+
     private:
-        std::deque<DecodedPicture> m_vecDecodedPictures;
+        /**
+         * @brief Initialize the surface pool
+         *
+         * To avoid some black screen blinking, we allocate a pool of DecodedPicture.
+         * This is called on the first call of getNextDecodedPicture and when all
+         * DecodedPicture arse used, when override the oldest one. Hence, we avoid
+         * to allocate "on the fly" the VdpVideoSurface.
+         *
+         * @param device A reference to a valid Device
+         * @param surfaceSize The size of DecodedPicture
+         */
+        void initializeSurfacePool(Device& device, const SizeU& surfaceSize);
+
+    private:
+        std::vector<DecodedPicture> m_listDecodedPictures;
+        std::deque<int> m_listIndexReferencePictures;
+        int m_currentIndex;
     };
 }
 
