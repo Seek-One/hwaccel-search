@@ -64,7 +64,7 @@ namespace vw {
                 profile,
                 infos.pictureSize.width,
                 infos.pictureSize.height,
-                16, // Required by the standard
+                infos.num_ref_frames,
                 &m_decoder
             );
             gVdpFunctionsInstance()->throwExceptionOnFail(vdpStatus, "[Decoder] Couldn't create the decoder");

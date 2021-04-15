@@ -28,10 +28,10 @@ namespace vw {
     DecodedPicture& DecodedPictureBuffer::getNextDecodedPicture(Device& device, const H264Infos &infos) {
         // Initialize the ring buffer
         if (m_listDecodedPictures.size() == 0) {
-            initializeSurfacePool(device, infos.pictureSize);
+            initializeSurfacePool(device, infos.pictureSize, infos.num_ref_frames + 1);
         }
 
-        assert(m_currentIndex >= 0 && m_currentIndex < PoolSize);
+        assert(m_currentIndex >= 0 && static_cast<std::size_t>(m_currentIndex) < m_listDecodedPictures.size());
         auto& decodedPicture = m_listDecodedPictures[m_currentIndex];
 
         decodedPicture.referenceType = infos.referenceType;
@@ -56,7 +56,7 @@ namespace vw {
             }
         }
 
-        m_currentIndex = (m_currentIndex + 1) % PoolSize;
+        m_currentIndex = (m_currentIndex + 1) % m_listDecodedPictures.size();
 
         return decodedPicture;
     }
@@ -65,10 +65,10 @@ namespace vw {
         int h264InfoRefIndex = 0;
 
         // Skip the first ref frame
-        for (std::size_t i = 1; i < m_listIndexReferencePictures.size(); ++i) {
+        for (std::size_t i = 1; i < m_listIndexReferencePictures.size() && h264InfoRefIndex < infos.num_ref_frames; ++i) {
             int refDBPIndex = m_listIndexReferencePictures[i];
 
-            assert(refDBPIndex >= 0 && refDBPIndex < PoolSize);
+            assert(refDBPIndex >= 0 && static_cast<std::size_t>(refDBPIndex) < m_listDecodedPictures.size());
             assert(h264InfoRefIndex < 16);
 
             const auto& decodedPicture = m_listDecodedPictures[refDBPIndex];
@@ -88,8 +88,8 @@ namespace vw {
         m_listIndexReferencePictures.clear();
     }
 
-    void DecodedPictureBuffer::initializeSurfacePool(Device& device, const SizeU& surfaceSize) {
-        for (int i = 0; i < PoolSize; ++i) {
+    void DecodedPictureBuffer::initializeSurfacePool(Device& device, const SizeU& surfaceSize, int poolSize) {
+        for (int i = 0; i < poolSize; ++i) {
             m_listDecodedPictures.emplace_back(device, surfaceSize);
         }
     }

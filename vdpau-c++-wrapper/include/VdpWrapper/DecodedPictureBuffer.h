@@ -121,8 +121,6 @@ namespace vw {
          */
         void clear();
 
-        static constexpr int PoolSize = 16; ///< Arbitrary DecodedPicture pool size
-
     private:
         /**
          * @brief Initialize the surface pool
@@ -135,7 +133,7 @@ namespace vw {
          * @param device A reference to a valid Device
          * @param surfaceSize The size of DecodedPicture
          */
-        void initializeSurfacePool(Device& device, const SizeU& surfaceSize);
+        void initializeSurfacePool(Device& device, const SizeU& surfaceSize, int poolSize);
 
     private:
         std::vector<DecodedPicture> m_listDecodedPictures;
