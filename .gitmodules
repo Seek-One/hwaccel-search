@@ -1,3 +1,6 @@
 [submodule "lib/vendor/h264bitstream"]
 	path = vdpau-c++-wrapper/lib/vendor/h264bitstream
 	url = https://github.com/aizvorski/h264bitstream.git
+[submodule "d3d11va-player/lib/vendor/h264bitstream"]
+	path = d3d11va-player/lib/vendor/h264bitstream
+	url = https://github.com/aizvorski/h264bitstream.git
