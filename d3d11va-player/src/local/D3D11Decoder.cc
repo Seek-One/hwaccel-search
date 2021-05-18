@@ -34,6 +34,12 @@
 #include <initguid.h>
 DEFINE_GUID(D3D11_DECODER_PROFILE_H264_VLD_NOFGT,    0x1b81be68, 0xa0c7,0x11d3,0xb9,0x84,0x00,0xc0,0x4f,0x2e,0x73,0xc5);
 
+namespace {
+  constexpr int alignedSize(int size, int nbPixels) {
+    return (size + nbPixels - 1) & ~(nbPixels - 1);
+  }
+}
+
 namespace dp {
   D3D11Decoder::D3D11Decoder(const SizeI rawPictureSize) {
     // Create the D3D11VA device
@@ -93,13 +99,100 @@ namespace dp {
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unsupported output format");
     }
+
+    // Align size to 16 bytes
+    SizeI alignedPictureSize;
+    alignedPictureSize.width = alignedSize(rawPictureSize.width, 16);
+    alignedPictureSize.height = alignedSize(rawPictureSize.height, 16);
+
+    // Select decoder configuration
+    UINT iDecoderConfigCount = 0;
+
+    D3D11_VIDEO_DECODER_DESC decoderDesc;
+    decoderDesc.Guid = h264DecoderProfile;
+    decoderDesc.SampleWidth = alignedPictureSize.width;
+    decoderDesc.SampleHeight = alignedPictureSize.height;
+    decoderDesc.OutputFormat = DXGI_FORMAT_NV12;
+
+    hRes = m_videoDevice->GetVideoDecoderConfigCount(&decoderDesc, &iDecoderConfigCount);
+    if (FAILED(hRes) || iDecoderConfigCount == 0) {
+      throw std::runtime_error("[D3D11Decoder] Unable to get the decoder configurations");
+    }
+
+    // Select a decoder profile with ConfigBitstreamRaw != 0
+    // TODO: we need to prefer no crypt buffer and ConfigBitstreamRaw == 2
+    D3D11_VIDEO_DECODER_CONFIG decoderConfig;
+    bool configFound = false;
+    for (UINT i = 0; i < iDecoderConfigCount; ++i) {
+      hRes = m_videoDevice->GetVideoDecoderConfig(&decoderDesc, i, &decoderConfig);
+      if (FAILED(hRes)) {
+        throw std::runtime_error("[D3D11Decoder] Invalid configuration index provided");
+      }
+
+      if (/*conf.ConfigBitstreamRaw == 1 || */decoderConfig.ConfigBitstreamRaw == 2) {
+        configFound = true;
+        break;
+      }
+    }
+
+    hRes = m_videoDevice->CreateVideoDecoder(&decoderDesc, &decoderConfig, &m_videoDecoder);
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11VideoDecoder");
+    }
+
+    // Create output surfaces
+    D3D11_TEXTURE2D_DESC textureDesc;
+    textureDesc.Width = decoderDesc.SampleWidth;
+    textureDesc.Height = decoderDesc.SampleHeight;
+    textureDesc.Format = DXGI_FORMAT_NV12;
+    textureDesc.ArraySize = 25; // TODO: which value?
+    textureDesc.MipLevels = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.BindFlags = D3D11_BIND_DECODER;
+    textureDesc.CPUAccessFlags = 0;
+    textureDesc.MiscFlags = 0;
+
+    hRes = m_device->CreateTexture2D(&textureDesc, NULL, &m_texture);
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11Texture2D");
+    }
+
+    for (UINT i = 0; i < textureDesc.ArraySize; ++i) {
+      ID3D11VideoDecoderOutputView* outputView = nullptr;
+      D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC viewDesc;
+      viewDesc.DecodeProfile = h264DecoderProfile;
+      viewDesc.Texture2D.ArraySlice = i;
+      viewDesc.ViewDimension = D3D11_VDOV_DIMENSION_TEXTURE2D;
+
+      hRes = m_videoDevice->CreateVideoDecoderOutputView(
+        static_cast<ID3D11Resource*>(m_texture),
+        &viewDesc,
+        static_cast<ID3D11VideoDecoderOutputView**>(&outputView)
+      );
+      if (FAILED(hRes)) {
+        throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11VideoDecoderOutputView");
+      }
+
+      m_outputViews.push_back(outputView);
+      m_texture->AddRef();
+    }
   }
 
   D3D11Decoder::~D3D11Decoder() {
-    m_device->Release();
-    m_deviceContext->Release();
+    for (auto outputView: m_outputViews) {
+      outputView->Release();
+      m_texture->Release();
+    }
+    m_texture->Release();
 
-    m_videoDevice->Release();
+    m_videoDecoder->Release();
+
     m_videoContext->Release();
+    m_videoDevice->Release();
+
+    m_deviceContext->Release();
+    m_device->Release();
   }
 }

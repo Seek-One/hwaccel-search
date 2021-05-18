@@ -27,6 +27,8 @@
 
 #include <d3d11.h>
 
+#include <vector>
+
 #include "Size.h"
 
 namespace dp {
@@ -46,6 +48,9 @@ namespace dp {
     ID3D11DeviceContext* m_deviceContext;
     ID3D11VideoDevice* m_videoDevice;
     ID3D11VideoContext* m_videoContext;
+    ID3D11VideoDecoder* m_videoDecoder;
+    ID3D11Texture2D* m_texture;
+    std::vector<ID3D11VideoDecoderOutputView*> m_outputViews;
   };
 }
 
