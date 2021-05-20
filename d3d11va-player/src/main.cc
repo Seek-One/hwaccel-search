@@ -41,6 +41,10 @@ int main(int argc, char* argv[]) {
   while (fileParser.parseNextNAL()) {
     const auto& stream = fileParser.getStream();
     std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
+
+    if (stream.nal->nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_IDR) {
+      decoder.decodeSlice(fileParser);
+    }
   }
 
   return 0;

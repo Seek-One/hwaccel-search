@@ -22,16 +22,20 @@
 #ifndef LOCAL_D3D11_DECODER_H
 #define LOCAL_D3D11_DECODER_H
 
+#define NOMINMAX
 #include <windows.h>
 #include <WinSDKVer.h>
 
 #include <d3d11.h>
+#include <dxva.h>
 
 #include <vector>
 
 #include "Size.h"
 
 namespace dp {
+  class FileParser;
+
   class D3D11Decoder {
   public:
     D3D11Decoder(const SizeI rawPictureSize);
@@ -43,6 +47,46 @@ namespace dp {
     D3D11Decoder& operator=(const D3D11Decoder&) = delete;
     D3D11Decoder& operator=(D3D11Decoder&&) = delete;
 
+    void decodeSlice(FileParser& parser);
+
+  private:
+    void fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser);
+    void fillScalingLists(DXVA_Qmatrix_H264& scalingLists, const FileParser& parser);
+    void D3D11Decoder::sendBistreamAndSliceControl(
+      const std::vector<uint8_t>& bitstream,
+      D3D11_VIDEO_DECODER_BUFFER_DESC& bitstreamBufferDesc,
+      D3D11_VIDEO_DECODER_BUFFER_DESC& sliceControlBufferDesc,
+      std::vector<DXVA_Slice_H264_Short>& listSliceControl,
+      const FileParser& parser
+    );
+
+    template<typename Buffer>
+    void sendBuffer(D3D11_VIDEO_DECODER_BUFFER_TYPE bufferType, const Buffer* buffer, int bufferSize, D3D11_VIDEO_DECODER_BUFFER_DESC& bufferDesc, int MBCount = 0) {
+      HRESULT hRes = 0;
+      void *D3D11VABuffer = NULL;
+      UINT D3D11VABufferSize = 0;
+
+      hRes = m_videoContext->GetDecoderBuffer(m_videoDecoder, bufferType, &D3D11VABufferSize, &D3D11VABuffer);
+      if (FAILED(hRes)) {
+        throw std::runtime_error("[D3D11Decoder] Unable to get a decoder buffer");
+      }
+
+      if (D3D11VABufferSize < (UINT)bufferSize) {
+        throw std::runtime_error("[D3D11Decoder] The D3D11 VA buffer is too small");
+      }
+
+      std::memcpy(D3D11VABuffer, buffer, bufferSize);
+      memset(&bufferDesc, 0, sizeof(D3D11_VIDEO_DECODER_BUFFER_DESC));
+      bufferDesc.BufferType = bufferType;
+      bufferDesc.DataSize = bufferSize;
+      bufferDesc.NumMBsInBuffer = MBCount;
+
+      hRes = m_videoContext->ReleaseDecoderBuffer(m_videoDecoder, bufferType);
+      if (FAILED(hRes)) {
+        throw std::runtime_error("[D3D11Decoder] Unable to release a decoder buffer");
+      }
+    }
+
   private:
     ID3D11Device* m_device;
     ID3D11DeviceContext* m_deviceContext;
@@ -51,6 +95,7 @@ namespace dp {
     ID3D11VideoDecoder* m_videoDecoder;
     ID3D11Texture2D* m_texture;
     std::vector<ID3D11VideoDecoderOutputView*> m_outputViews;
+    unsigned m_currentReportID;
   };
 }
 

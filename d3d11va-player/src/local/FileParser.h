@@ -48,21 +48,36 @@ namespace dp {
 
     bool parseNextNAL();
     const h264_stream_t& getStream() const;
+    const std::vector<uint8_t>& getCurrentNAL() const;
+
+    void computePoc(int& TopFieldOrderCnt, int& BottomFieldOrderCnt);
 
   private:
     void computeSizes();
     int computeSubWidthC();
     int computeSubHeightC();
 
+    void computePocType0(int& TopFieldOrderCnt, int& BottomFieldOrderCnt);
+    void computePocType1(int& TopFieldOrderCnt, int& BottomFieldOrderCnt);
+    void computePocType2(int& TopFieldOrderCnt, int& BottomFieldOrderCnt);
+
   private:
     h264_stream_t* m_h264Stream;
     std::vector<uint8_t> m_bitstreamData;
-    uint8_t* m_pDataCursor;
+    uint8_t* m_dataCursor;
     int m_unprocessedDataSize;
     bool m_sizeComputed;
     SizeI m_mbPictureSize;
     SizeI m_rawPictureSize;
     SizeI m_realPictureSize;
+    std::vector<uint8_t> m_currentNAL;
+
+    // Picture Order Count
+    int m_prevPicOrderCntMsb;
+    int m_prevPicOrderCntLsb;
+    int m_prevFrameNumOffset;
+    int m_prevFrameNum;
+    int m_prevMMCO;
   };
 }
 
