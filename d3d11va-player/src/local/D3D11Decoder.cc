@@ -52,7 +52,8 @@ namespace dp {
   , m_videoContext(nullptr)
   , m_videoDecoder(nullptr)
   , m_texture(nullptr)
-  , m_currentReportID(1) {
+  , m_currentReportID(1)
+  , m_currentSurfaceIndex(0) {
     // Create the D3D11VA device
     UINT deviceFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
 #if defined(_DEBUG) || defined(DEBUG) || !defined(NDEBUG)
@@ -208,17 +209,22 @@ namespace dp {
   }
 
   void D3D11Decoder::decodeSlice(FileParser& parser) {
+    D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
     // To send a slice to the decoder, we need to fill and send 4 buffers :
     // - D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS
     // - D3D11_VIDEO_DECODER_BUFFER_INVERSE_QUANTIZATION_MATRIX
     // - D3D11_VIDEO_DECODER_BUFFER_BITSTREAM
     // - D3D11_VIDEO_DECODER_BUFFER_SLICE_CONTROL
 
-    D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
-    int surfaceIndex = 0; // TODO: handle the surface index computation
+    const auto& nal = *(parser.getStream().nal);
+
+    // Reset the decoded picture buffer when a IDR frame arrives
+    if (nal.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_IDR) {
+      startNewIDRFrame();
+    }
 
     // Start the frame (lock directx surface)
-    HRESULT hRes = m_videoContext->DecoderBeginFrame(m_videoDecoder, m_outputViews[surfaceIndex], 0, nullptr);
+    HRESULT hRes = m_videoContext->DecoderBeginFrame(m_videoDecoder, m_outputViews[m_currentSurfaceIndex], 0, nullptr);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to begin the frame");
     }
@@ -246,6 +252,11 @@ namespace dp {
     hRes = m_videoContext->DecoderEndFrame(m_videoDecoder);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to end the frame");
+    }
+
+    // Add the new decoded frame to the DPB
+    if (nal.nal_ref_idc > 0) {
+      m_dpb.addRefFrame(picParams.CurrPic, picParams.frame_num, picParams.CurrFieldOrderCnt[0], picParams.CurrFieldOrderCnt[1]);
     }
 
     // Create a temporary texture -- move to member variable?
@@ -322,6 +333,9 @@ namespace dp {
     file.close();
 
     std::cout << "[D3D11Decoder] Dump YUV" << std::endl;
+
+    // Select the new surface index
+    m_currentSurfaceIndex = getNextAvailableSurfaceIndex();
   }
 
   void D3D11Decoder::fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser) {
@@ -406,29 +420,26 @@ namespace dp {
 
     picParams.UsedForReferenceFlags  = 0;
     picParams.NonExistingFrameFlags  = 0;
-    for (int i = 0/*, j = 0*/; i < 16; i++) {
-      // TODO: get last ref frame
-      // if (r) {
-      //   fill_picture_entry(&picParams.RefFrameList[i],
-      //           ff_dxva2_get_surface_index(avctx, ctx, r->f),
-      //           r->long_ref != 0);
 
-      //   if ((r->reference & PICT_TOP_FIELD) && r->field_poc[0] != INT_MAX)
-      //     picParams.FieldOrderCntList[i][0] = r->field_poc[0];
-      //   if ((r->reference & PICT_BOTTOM_FIELD) && r->field_poc[1] != INT_MAX)
-      //     picParams.FieldOrderCntList[i][1] = r->field_poc[1];
+    auto refFrameList = m_dpb.getRefFrameList();
 
-      //   picParams.FrameNumList[i] = r->long_ref ? r->pic_id : r->frame_num;
-      //   if (r->reference & PICT_TOP_FIELD)
-      //     picParams.UsedForReferenceFlags |= 1 << (2*i + 0);
-      //   if (r->reference & PICT_BOTTOM_FIELD)
-      //     picParams.UsedForReferenceFlags |= 1 << (2*i + 1);
-      // } else {
-        picParams.RefFrameList[i].bPicEntry = 0xff;
-        picParams.FieldOrderCntList[i][0]   = 0;
-        picParams.FieldOrderCntList[i][1]   = 0;
-        picParams.FrameNumList[i]           = 0;
-      // }
+    for (size_t i = 0; i < refFrameList.size(); ++i) {
+      const auto& refFrame = refFrameList[i];
+      picParams.RefFrameList[i] = refFrame.dxvaEntry;
+      picParams.FieldOrderCntList[i][0] = refFrame.TopFieldOrderCnt;
+      picParams.FieldOrderCntList[i][1] = refFrame.BottomFieldOrderCnt;
+      picParams.FrameNumList[i] = static_cast<USHORT>(refFrame.FrameNum);
+      // TODO: For now, we handle only the progressive so the picture is a always a top and
+      // bottom reference
+      picParams.UsedForReferenceFlags |= 0b11 << (2*i);
+    }
+
+    // Set other entry to default values
+    for (size_t i = refFrameList.size(); i < 16; ++i) {
+      picParams.RefFrameList[i].bPicEntry = 0xff;
+      picParams.FieldOrderCntList[i][0] = 0;
+      picParams.FieldOrderCntList[i][1] = 0;
+      picParams.FrameNumList[i] = 0;
     }
   }
 
@@ -510,5 +521,17 @@ namespace dp {
       sliceControlBufferDesc,
       totalMB
     );
+  }
+
+  unsigned D3D11Decoder::getNextAvailableSurfaceIndex() const {
+    D3D11_TEXTURE2D_DESC textureDesc;
+    m_texture->GetDesc(&textureDesc);
+
+    return (m_currentSurfaceIndex + 1) % textureDesc.ArraySize;
+  }
+
+  void D3D11Decoder::startNewIDRFrame() {
+    m_dpb.clear();
+    m_currentSurfaceIndex = 0;
   }
 }

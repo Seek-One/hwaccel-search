@@ -31,6 +31,7 @@
 
 #include <vector>
 
+#include "DecodedPictureBuffer.h"
 #include "Size.h"
 
 namespace dp {
@@ -87,6 +88,9 @@ namespace dp {
       }
     }
 
+    unsigned getNextAvailableSurfaceIndex() const;
+    void startNewIDRFrame();
+
   private:
     ID3D11Device* m_device;
     ID3D11DeviceContext* m_deviceContext;
@@ -96,6 +100,8 @@ namespace dp {
     ID3D11Texture2D* m_texture;
     std::vector<ID3D11VideoDecoderOutputView*> m_outputViews;
     unsigned m_currentReportID;
+    unsigned m_currentSurfaceIndex;
+    DecodedPictureBuffer m_dpb;
   };
 }
 

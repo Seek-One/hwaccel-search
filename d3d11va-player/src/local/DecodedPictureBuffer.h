@@ -19,31 +19,40 @@
  * SOFTWARE.
  */
 
-#include <iostream>
+#ifndef LOCAL_DECODED_PICTURE_BUFFER_H_
+#define LOCAL_DECODED_PICTURE_BUFFER_H_
 
-#include "local/D3D11Decoder.h"
-#include "local/FileParser.h"
+#include <windows.h>
+#include <dxva.h>
 
-int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "Missing parameter" << std::endl;
-    std::cerr << "Usage: " << argv[0] << " BITSTREAM_FILE" << std::endl;
+#include <deque>
 
-    return 1;
-  }
+namespace dp {
+  struct DecodedPictureBufferEntry {
+    DXVA_PicEntry_H264 dxvaEntry;
+    int FrameNum;
+    int TopFieldOrderCnt;
+    int BottomFieldOrderCnt;
+  };
 
-  dp::FileParser fileParser(argv[1]);
-  fileParser.extractPictureSizes();
-  auto rawPictureSize = fileParser.getRawPictureSize();
+  class DecodedPictureBuffer {
+  public:
+    DecodedPictureBuffer() = default;
+    ~DecodedPictureBuffer() = default;
 
-  dp::D3D11Decoder decoder(rawPictureSize);
+    DecodedPictureBuffer(const DecodedPictureBuffer&) = delete;
+    DecodedPictureBuffer(DecodedPictureBuffer&&) = delete;
 
-  while (fileParser.parseNextNAL()) {
-    const auto& stream = fileParser.getStream();
-    std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
+    DecodedPictureBuffer& operator=(const DecodedPictureBuffer&) = delete;
+    DecodedPictureBuffer& operator=(DecodedPictureBuffer&&) = delete;
 
-    decoder.decodeSlice(fileParser);
-  }
+    void addRefFrame(const DXVA_PicEntry_H264& dxvaEntry, int FrameNum, int TopFieldOrderCnt, int BottomFieldOrderCnt);
+    const std::deque<DecodedPictureBufferEntry>& getRefFrameList() const;
+    void clear();
 
-  return 0;
+  private:
+    std::deque<DecodedPictureBufferEntry> m_dpb;
+  };
 }
+
+#endif // LOCAL_DECODED_PICTURE_BUFFER_H_

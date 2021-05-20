@@ -19,31 +19,22 @@
  * SOFTWARE.
  */
 
-#include <iostream>
+#include "DecodedPictureBuffer.h"
 
-#include "local/D3D11Decoder.h"
-#include "local/FileParser.h"
+namespace dp {
+  void DecodedPictureBuffer::addRefFrame(const DXVA_PicEntry_H264& dxvaEntry, int FrameNum, int TopFieldOrderCnt, int BottomFieldOrderCnt) {
+    m_dpb.push_front({ dxvaEntry, FrameNum, TopFieldOrderCnt, BottomFieldOrderCnt });
 
-int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "Missing parameter" << std::endl;
-    std::cerr << "Usage: " << argv[0] << " BITSTREAM_FILE" << std::endl;
-
-    return 1;
+    if (m_dpb.size() > 16) {
+      m_dpb.pop_back();
+    }
   }
 
-  dp::FileParser fileParser(argv[1]);
-  fileParser.extractPictureSizes();
-  auto rawPictureSize = fileParser.getRawPictureSize();
-
-  dp::D3D11Decoder decoder(rawPictureSize);
-
-  while (fileParser.parseNextNAL()) {
-    const auto& stream = fileParser.getStream();
-    std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
-
-    decoder.decodeSlice(fileParser);
+  const std::deque<DecodedPictureBufferEntry>& DecodedPictureBuffer::getRefFrameList() const {
+    return m_dpb;
   }
 
-  return 0;
+  void DecodedPictureBuffer::clear() {
+    m_dpb.clear();
+  }
 }
