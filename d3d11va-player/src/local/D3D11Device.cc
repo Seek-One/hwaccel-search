@@ -30,7 +30,7 @@ namespace dp {
     // Create the D3D11VA device
     UINT deviceFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
 #if defined(_DEBUG) || defined(DEBUG) || !defined(NDEBUG)
-    std::cout << "[D3D11Decoder] D3D11 debug layer enabled" << std::endl;
+    std::cout << "[D3D11Device] D3D11 debug layer enabled" << std::endl;
     deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
@@ -41,7 +41,7 @@ namespace dp {
 
     HRESULT hRes = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, featureLevels, 2, D3D11_SDK_VERSION, &m_device, nullptr, &m_deviceContext);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to create D3D11 device");
+      throw std::runtime_error("[D3D11Device] Unable to create D3D11 device");
     }
   }
 
