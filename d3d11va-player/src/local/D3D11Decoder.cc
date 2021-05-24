@@ -19,11 +19,6 @@
  * SOFTWARE.
  */
 
-#ifdef _MSC_VER
-#pragma once
-#pragma comment(lib, "d3d11")
-#endif // _MSC_VER
-
 #include "D3D11Decoder.h"
 
 #include <fstream>

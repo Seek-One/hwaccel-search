@@ -22,6 +22,7 @@
 #ifndef LOCAL_D3D11_DECODER_H
 #define LOCAL_D3D11_DECODER_H
 
+#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <WinSDKVer.h>
 #include <windows.h>

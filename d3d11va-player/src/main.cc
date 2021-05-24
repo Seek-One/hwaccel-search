@@ -19,6 +19,9 @@
  * SOFTWARE.
  */
 
+#pragma comment(lib, "d3d11")
+#pragma comment(lib, "dxgi")
+
 #include <cassert>
 #include <iostream>
 
@@ -45,7 +48,7 @@ int main(int argc, char* argv[]) {
 
   dp::D3D11Device device;
   dp::D3D11Decoder decoder(device, rawPictureSize);
-  dp::Window window;
+  dp::Window window(device);
 
   while (window.isActive()) {
     window.procMessage();
