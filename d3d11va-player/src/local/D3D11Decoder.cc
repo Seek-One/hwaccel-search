@@ -332,6 +332,7 @@ namespace dp {
 
     file.close();
 
+    cpuTexture->Release();
     std::cout << "[D3D11Decoder] Dump YUV" << std::endl;
 
     // Select the new surface index
