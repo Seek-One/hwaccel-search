@@ -23,13 +23,20 @@
 #define LOCAL_WINDOW_H_
 
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <WinSDKVer.h>
 #include <windows.h>
 
+#include <d3d11.h>
+#include <dxgi.h>
+
 namespace dp {
+  class D3D11Device;
+
   class Window {
   public:
-    Window();
-    ~Window() = default;
+    Window(D3D11Device& d3d11Device);
+    ~Window();
 
     Window(const Window&) = delete;
     Window(Window&&) = delete;
@@ -39,8 +46,15 @@ namespace dp {
 
     bool isActive() const;
     void procMessage();
+    void clear();
+    void render();
 
   private:
+    D3D11Device& m_d3d11Device;
+    IDXGISwapChain* m_swapChain;
+    ID3D11RenderTargetView* m_renderView;
+    D3D11_VIEWPORT m_viewport;
+
     const LPCWSTR m_szTitle;
     const LPCWSTR m_szWindowClass;
     bool m_isActive;

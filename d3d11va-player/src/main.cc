@@ -22,7 +22,6 @@
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "dxgi")
 
-#include <cassert>
 #include <iostream>
 
 #include "local/D3D11Decoder.h"
@@ -39,8 +38,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Remove previous dump file
-  bool res = std::filesystem::remove("dump.yuv");
-  assert(res);
+  std::filesystem::remove("dump.yuv");
 
   dp::FileParser fileParser(argv[1]);
   fileParser.extractPictureSizes();
@@ -52,6 +50,8 @@ int main(int argc, char* argv[]) {
 
   while (window.isActive()) {
     window.procMessage();
+    window.clear();
+    window.render();
 
     // If it's the end of stream, we only keep the window
     if (!fileParser.parseNextNAL()) {
