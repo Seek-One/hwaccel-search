@@ -19,10 +19,12 @@
  * SOFTWARE.
  */
 
+#include <cassert>
 #include <iostream>
 
 #include "local/D3D11Decoder.h"
 #include "local/FileParser.h"
+#include "local/Window.h"
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
@@ -32,13 +34,35 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Remove previous dump file
+  bool res = std::filesystem::remove("dump.yuv");
+  assert(res);
+
   dp::FileParser fileParser(argv[1]);
   fileParser.extractPictureSizes();
   auto rawPictureSize = fileParser.getRawPictureSize();
 
   dp::D3D11Decoder decoder(rawPictureSize);
+  dp::Window window;
 
-  while (fileParser.parseNextNAL()) {
+  MSG msg;
+  for (;;) {
+    PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+    if (!TranslateAccelerator(msg.hwnd, nullptr, &msg)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+
+    if (msg.message == WM_QUIT)
+      break;
+
+    // Break if user presses escape key
+    if (GetAsyncKeyState(VK_ESCAPE)) break;
+
+    if (!fileParser.parseNextNAL()) {
+      continue;
+    }
+
     const auto& stream = fileParser.getStream();
     std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
 

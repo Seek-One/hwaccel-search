@@ -25,7 +25,6 @@ set(LOCAL_PROJECT_NAME        "h264bitstream")
 set(LOCAL_PROJECT_OUTPUT_NAME "h264bitstream")
 
 add_library(h264bitstream_target STATIC
-    h264bitstream/h264_analyze.c
     h264bitstream/h264_sei.c
     h264bitstream/h264_slice_data.c
     h264bitstream/h264_nal.c

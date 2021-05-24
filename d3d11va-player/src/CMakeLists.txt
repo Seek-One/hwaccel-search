@@ -26,6 +26,7 @@ add_executable(d3d11va_player_target
     local/D3D11Decoder.cc
     local/DecodedPictureBuffer.cc
     local/FileParser.cc
+    local/Window.cc
     main.cc
 )
 
@@ -68,6 +69,11 @@ target_include_directories(d3d11va_player_target
 #     "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
 #     "${CMAKE_CURRENT_BINARY_DIR}/gen-private-include/version.h"
 # )
+
+# Force Unicode support
+target_compile_definitions(d3d11va_player_target
+  PRIVATE "UNICODE;_UNICODE"
+)
 
 # Turn on warnings
 target_compile_options(d3d11va_player_target PRIVATE $<$<CXX_COMPILER_ID:GNU>:
