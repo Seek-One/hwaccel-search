@@ -25,14 +25,28 @@
 
 #include <stdexcept>
 
+namespace details {
+  LRESULT CALLBACK procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_DESTROY:
+      PostQuitMessage(0);
+      break;
+    default:
+      return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
+  }
+}
+
 namespace dp {
   Window::Window()
   : m_szTitle(L"D3D11VA Player")
-  , m_szWindowClass(L"D3D11VAPLAYER") {
+  , m_szWindowClass(L"D3D11VAPLAYER")
+  , m_isActive(true) {
     WNDCLASSEXW wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = Window::procMessage;
+    wcex.lpfnWndProc    = details::procMessage;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = nullptr;
@@ -75,14 +89,24 @@ namespace dp {
     }
   }
 
-  LRESULT CALLBACK Window::procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    switch (message) {
-    case WM_DESTROY:
-      PostQuitMessage(0);
-      break;
-    default:
-      return DefWindowProc(hWnd, message, wParam, lParam);
+  bool Window::isActive() const {
+    return m_isActive;
+  }
+
+  void Window::procMessage() {
+    MSG msg;
+    PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+    if (!TranslateAccelerator(msg.hwnd, nullptr, &msg)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
     }
-    return 0;
+
+    if (msg.message == WM_QUIT) {
+      m_isActive = false;
+    }
+    // Break if user presses escape key
+    else if (GetAsyncKeyState(VK_ESCAPE)) {
+      m_isActive = false;
+    }
   }
 }

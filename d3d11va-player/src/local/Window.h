@@ -37,11 +37,13 @@ namespace dp {
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) = delete;
 
-    static LRESULT CALLBACK procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+    bool isActive() const;
+    void procMessage();
 
   private:
     const LPCWSTR m_szTitle;
     const LPCWSTR m_szWindowClass;
+    bool m_isActive;
   };
 }
 

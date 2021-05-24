@@ -45,20 +45,10 @@ int main(int argc, char* argv[]) {
   dp::D3D11Decoder decoder(rawPictureSize);
   dp::Window window;
 
-  MSG msg;
-  for (;;) {
-    PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
-    if (!TranslateAccelerator(msg.hwnd, nullptr, &msg)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    }
+  while (window.isActive()) {
+    window.procMessage();
 
-    if (msg.message == WM_QUIT)
-      break;
-
-    // Break if user presses escape key
-    if (GetAsyncKeyState(VK_ESCAPE)) break;
-
+    // If it's the end of stream, we only keep the window
     if (!fileParser.parseNextNAL()) {
       continue;
     }
