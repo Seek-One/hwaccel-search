@@ -23,8 +23,8 @@
 #define LOCAL_D3D11_DECODER_H
 
 #define NOMINMAX
-#include <windows.h>
 #include <WinSDKVer.h>
+#include <windows.h>
 
 #include <d3d11.h>
 #include <dxva.h>
@@ -35,11 +35,12 @@
 #include "Size.h"
 
 namespace dp {
+  class D3D11Device;
   class FileParser;
 
   class D3D11Decoder {
   public:
-    D3D11Decoder(const SizeI rawPictureSize);
+    D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize);
     ~D3D11Decoder();
 
     D3D11Decoder(const D3D11Decoder&) = delete;
@@ -92,8 +93,7 @@ namespace dp {
     void startNewIDRFrame();
 
   private:
-    ID3D11Device* m_device;
-    ID3D11DeviceContext* m_deviceContext;
+    D3D11Device& m_d3d11Device;
     ID3D11VideoDevice* m_videoDevice;
     ID3D11VideoContext* m_videoContext;
     ID3D11VideoDecoder* m_videoDecoder;

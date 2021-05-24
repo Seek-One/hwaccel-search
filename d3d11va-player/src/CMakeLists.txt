@@ -24,6 +24,7 @@
 
 add_executable(d3d11va_player_target
     local/D3D11Decoder.cc
+    local/D3D11Device.cc
     local/DecodedPictureBuffer.cc
     local/FileParser.cc
     local/Window.cc

@@ -19,47 +19,37 @@
  * SOFTWARE.
  */
 
-#include <cassert>
-#include <iostream>
+#ifndef LOCAL_D3D11_DEVICE_H_
+#define LOCAL_D3D11_DEVICE_H_
 
-#include "local/D3D11Decoder.h"
-#include "local/D3D11Device.h"
-#include "local/FileParser.h"
-#include "local/Window.h"
+#define NOMINMAX
+#include <WinSDKVer.h>
+#include <windows.h>
 
-int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cerr << "Missing parameter" << std::endl;
-    std::cerr << "Usage: " << argv[0] << " BITSTREAM_FILE" << std::endl;
+#include <d3d11.h>
 
-    return 1;
-  }
+namespace dp {
+  class D3D11Device {
+  public:
+    D3D11Device();
+    ~D3D11Device();
 
-  // Remove previous dump file
-  bool res = std::filesystem::remove("dump.yuv");
-  assert(res);
+    D3D11Device(const D3D11Device&) = delete;
+    D3D11Device(D3D11Device&&) = delete;
 
-  dp::FileParser fileParser(argv[1]);
-  fileParser.extractPictureSizes();
-  auto rawPictureSize = fileParser.getRawPictureSize();
+    D3D11Device& operator=(const D3D11Device&) = delete;
+    D3D11Device& operator=(D3D11Device&&) = delete;
 
-  dp::D3D11Device device;
-  dp::D3D11Decoder decoder(device, rawPictureSize);
-  dp::Window window;
+    ID3D11Device& getDevice();
+    const ID3D11Device& getDevice() const;
 
-  while (window.isActive()) {
-    window.procMessage();
+    ID3D11DeviceContext& getDeviceContext();
+    const ID3D11DeviceContext& getDeviceContext() const;
 
-    // If it's the end of stream, we only keep the window
-    if (!fileParser.parseNextNAL()) {
-      continue;
-    }
-
-    const auto& stream = fileParser.getStream();
-    std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
-
-    decoder.decodeSlice(fileParser);
-  }
-
-  return 0;
+  private:
+    ID3D11Device* m_device;
+    ID3D11DeviceContext* m_deviceContext;
+  };
 }
+
+#endif // LOCAL_D3D11_DEVICE_H_

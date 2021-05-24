@@ -36,6 +36,7 @@
 #include <initguid.h>
 DEFINE_GUID(D3D11_DECODER_PROFILE_H264_VLD_NOFGT,    0x1b81be68, 0xa0c7,0x11d3,0xb9,0x84,0x00,0xc0,0x4f,0x2e,0x73,0xc5);
 
+#include "D3D11Device.h"
 #include "FileParser.h"
 
 namespace {
@@ -45,40 +46,24 @@ namespace {
 }
 
 namespace dp {
-  D3D11Decoder::D3D11Decoder(const SizeI rawPictureSize)
-  : m_device(nullptr)
-  , m_deviceContext(nullptr)
+  D3D11Decoder::D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize)
+  : m_d3d11Device(d3d11Device)
   , m_videoDevice(nullptr)
   , m_videoContext(nullptr)
   , m_videoDecoder(nullptr)
   , m_texture(nullptr)
   , m_currentReportID(1)
   , m_currentSurfaceIndex(0) {
-    // Create the D3D11VA device
-    UINT deviceFlags = D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
-#if defined(_DEBUG) || defined(DEBUG) || !defined(NDEBUG)
-    std::cout << "[D3D11Decoder] D3D11 debug layer enabled" << std::endl;
-    deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
-    D3D_FEATURE_LEVEL featureLevels[] = {
-      D3D_FEATURE_LEVEL_11_1,
-      D3D_FEATURE_LEVEL_11_0
-    };
-
-    HRESULT hRes = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, featureLevels, 2, D3D11_SDK_VERSION, &m_device, nullptr, &m_deviceContext);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to create D3D11 device");
-    }
-
     // Get the D3D11VA video device
-    hRes = m_device->QueryInterface(&m_videoDevice);
+    auto& device = m_d3d11Device.getDevice();
+    HRESULT hRes = device.QueryInterface(&m_videoDevice);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to get ID3D11VideoDevice");
     }
 
     // Get the D3D11VA video context
-    hRes = m_deviceContext->QueryInterface(&m_videoContext);
+    auto& deviceContext = m_d3d11Device.getDeviceContext();
+    hRes = deviceContext.QueryInterface(&m_videoContext);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to get ID3D11VideoContext");
     }
@@ -166,7 +151,7 @@ namespace dp {
     textureDesc.CPUAccessFlags = 0;
     textureDesc.MiscFlags = 0;
 
-    hRes = m_device->CreateTexture2D(&textureDesc, nullptr, &m_texture);
+    hRes = device.CreateTexture2D(&textureDesc, nullptr, &m_texture);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11Texture2D");
     }
@@ -203,9 +188,6 @@ namespace dp {
 
     m_videoContext->Release();
     m_videoDevice->Release();
-
-    m_deviceContext->Release();
-    m_device->Release();
   }
 
   void D3D11Decoder::decodeSlice(FileParser& parser) {
@@ -276,13 +258,13 @@ namespace dp {
     cpuTextureDesc.MiscFlags = 0;
 
     ID3D11Texture2D* cpuTexture = nullptr;
-    hRes = m_device->CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
+    hRes = m_d3d11Device.getDevice().CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Decoder] Unable to create CPU ID3D11Texture2D");
     }
 
     // copy the texture to a staging resource
-    m_deviceContext->CopySubresourceRegion(
+    m_d3d11Device.getDeviceContext().CopySubresourceRegion(
       cpuTexture,
       0,
       0,
@@ -295,7 +277,7 @@ namespace dp {
 
     // Map the staging resource
     D3D11_MAPPED_SUBRESOURCE mapInfo;
-    hRes = m_deviceContext->Map(
+    hRes = m_d3d11Device.getDeviceContext().Map(
       cpuTexture,
       0,
       D3D11_MAP_READ,
