@@ -28,7 +28,7 @@
 #include <windows.h>
 
 #include <d3d11.h>
-#include <dxgi.h>
+#include <dxgi1_2.h>
 
 namespace dp {
   class D3D11Device;
@@ -51,13 +51,19 @@ namespace dp {
 
   private:
     D3D11Device& m_d3d11Device;
-    IDXGISwapChain* m_swapChain;
+    IDXGISwapChain1* m_swapChain;
     ID3D11RenderTargetView* m_renderView;
     D3D11_VIEWPORT m_viewport;
 
     const LPCWSTR m_szTitle;
     const LPCWSTR m_szWindowClass;
     bool m_isActive;
+
+    ID3D11VertexShader* m_vertexShader;
+    ID3D11PixelShader* m_pixelShader;
+    ID3D11InputLayout* m_inputLayout;
+    ID3D11Buffer* m_vertexBuffer;
+    ID3D11Buffer* m_indexBuffer;
   };
 }
 

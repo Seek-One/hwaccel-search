@@ -21,6 +21,7 @@
 
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "dxgi")
+#pragma comment(lib, "d3dcompiler")
 
 #include <iostream>
 
@@ -40,12 +41,12 @@ int main(int argc, char* argv[]) {
   // Remove previous dump file
   std::filesystem::remove("dump.yuv");
 
-  dp::FileParser fileParser(argv[1]);
-  fileParser.extractPictureSizes();
-  auto rawPictureSize = fileParser.getRawPictureSize();
+  // dp::FileParser fileParser(argv[1]);
+  // fileParser.extractPictureSizes();
+  // auto rawPictureSize = fileParser.getRawPictureSize();
 
   dp::D3D11Device device;
-  dp::D3D11Decoder decoder(device, rawPictureSize);
+  // dp::D3D11Decoder decoder(device, rawPictureSize);
   dp::Window window(device);
 
   while (window.isActive()) {
@@ -54,14 +55,14 @@ int main(int argc, char* argv[]) {
     window.render();
 
     // If it's the end of stream, we only keep the window
-    if (!fileParser.parseNextNAL()) {
-      continue;
-    }
+    // if (!fileParser.parseNextNAL()) {
+    //   continue;
+    // }
 
-    const auto& stream = fileParser.getStream();
-    std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
+    // const auto& stream = fileParser.getStream();
+    // std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
 
-    decoder.decodeSlice(fileParser);
+    // decoder.decodeSlice(fileParser);
   }
 
   return 0;
