@@ -21,8 +21,11 @@
 
 #include "Window.h"
 
+#include <chrono>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 #include <d3dcompiler.h>
 #include <directxmath.h>
@@ -35,19 +38,21 @@ R"vs(
 struct VertexShaderInput
 {
   float2 pos : POSITION;
+  float2 tex : TEXCOORD;
 };
 
 struct PixelShaderInput
 {
   float4 pos : SV_POSITION;
+  float2 tex : TEXCOORD;
 };
 
 PixelShaderInput SimpleVertexShader(VertexShaderInput input)
 {
   PixelShaderInput vertexShaderOutput;
 
-  // For this lesson, set the vertex depth value to 0.5, so it is guaranteed to be drawn.
   vertexShaderOutput.pos = float4(input.pos, 0.5f, 1.0f);
+  vertexShaderOutput.tex = input.tex;// float4(1.0f, 1.0f, 0.0f, 1.0f);
 
   return vertexShaderOutput;
 }
@@ -55,17 +60,26 @@ PixelShaderInput SimpleVertexShader(VertexShaderInput input)
 
   const std::string pixelShaderCode =
 R"ps(
+Texture2D shaderTexture;
+SamplerState SampleType;
+
 struct PixelShaderInput
 {
   float4 pos : SV_POSITION;
+  float2 tex : TEXCOORD;
 };
 
 float4 SimplePixelShader(PixelShaderInput input) : SV_TARGET
 {
   // Draw the entire triangle yellow.
-  return float4(1.0f, 1.0f, 0.0f, 1.0f);
+  return shaderTexture.Sample(SampleType, input.tex);
 }
 )ps";
+
+  struct TexturedVertex {
+    DirectX::XMFLOAT2 pos;
+    DirectX::XMFLOAT2 tex;
+  };
 
   void logShaderErrors(ID3D10Blob* errorMessage) {
     std::string errorString(reinterpret_cast<const char*>(errorMessage->GetBufferPointer()), errorMessage->GetBufferSize());
@@ -254,6 +268,7 @@ namespace dp {
     // Create an input layout
     const D3D11_INPUT_ELEMENT_DESC basicVertexLayoutDesc[] = {
       { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+      { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
 
     m_inputLayout = nullptr;
@@ -305,18 +320,41 @@ namespace dp {
     pixelShaderBuffer->Release();
 
     // Create primitive
-    DirectX::XMFLOAT2 triangleVertices[] = {
-      DirectX::XMFLOAT2(-0.5f, -0.5f),
-      DirectX::XMFLOAT2( 0.0f,  0.5f),
-      DirectX::XMFLOAT2( 0.5f, -0.5f),
+    details::TexturedVertex triangleVertices[] = {
+      {
+        DirectX::XMFLOAT2(-1.0f,  1.0f),
+        DirectX::XMFLOAT2( 0.0f,  0.0f)
+      },
+      {
+        DirectX::XMFLOAT2( 1.0f, -1.0f),
+        DirectX::XMFLOAT2( 1.0f,  1.0f)
+      },
+      {
+        DirectX::XMFLOAT2(-1.0f, -1.0f),
+        DirectX::XMFLOAT2( 0.0f,  1.0f)
+      },
+
+      {
+        DirectX::XMFLOAT2(-1.0f,  1.0f),
+        DirectX::XMFLOAT2( 0.0f,  0.0f)
+      },
+      {
+        DirectX::XMFLOAT2( 1.0f,  1.0f),
+        DirectX::XMFLOAT2( 1.0f,  0.0f)
+      },
+      {
+        DirectX::XMFLOAT2( 1.0f, -1.0f),
+        DirectX::XMFLOAT2( 1.0f,  1.0f)
+      },
     };
 
     unsigned short triangleIndices[] = {
         0, 1, 2,
+        3, 4, 5,
     };
 
     D3D11_BUFFER_DESC vertexBufferDesc = {0};
-    vertexBufferDesc.ByteWidth = sizeof(DirectX::XMFLOAT2) * ARRAYSIZE(triangleVertices);
+    vertexBufferDesc.ByteWidth = sizeof(details::TexturedVertex) * ARRAYSIZE(triangleVertices);
     vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
     vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vertexBufferDesc.CPUAccessFlags = 0;
@@ -359,6 +397,94 @@ namespace dp {
     );
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to create a buffer");
+    }
+
+    // Load raw texture
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::ifstream textureFile("sample.raw", std::ios::in | std::ios::binary);
+    if (!textureFile.good()) {
+      throw std::runtime_error("[Window] Unable to open bitstream file 'sample.raw'");
+    }
+    textureFile.unsetf(std::ios::skipws);
+
+    // Load all data
+    std::vector<uint8_t> textureData(1920*1080*4);
+    textureData.insert(textureData.begin(), std::istream_iterator<uint8_t>(textureFile), std::istream_iterator<uint8_t>());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "[Window] Texture loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+
+    // Create the texture
+    D3D11_SUBRESOURCE_DATA textureSubresourceData = { 0 };
+    textureSubresourceData.pSysMem = textureData.data();
+    textureSubresourceData.SysMemPitch = 1920 * 4;
+    textureSubresourceData.SysMemSlicePitch = 0;
+
+    D3D11_TEXTURE2D_DESC textureDesc = { 0 };
+    textureDesc.Width = 1920;
+    textureDesc.Height = 1080;
+    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.CPUAccessFlags = 0;
+    textureDesc.MiscFlags = 0;
+    textureDesc.MipLevels = 1;
+    textureDesc.ArraySize = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    ID3D11Texture2D* texture = nullptr;
+    hRes = device.CreateTexture2D(
+      &textureDesc,
+      &textureSubresourceData,
+      &texture
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create background texture");
+    }
+
+    // Create texture shader view
+    D3D11_SHADER_RESOURCE_VIEW_DESC textureViewDesc;
+    ZeroMemory(&textureViewDesc, sizeof(textureViewDesc));
+    textureViewDesc.Format = textureDesc.Format;
+    textureViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    textureViewDesc.Texture2D.MipLevels = textureDesc.MipLevels;
+    textureViewDesc.Texture2D.MostDetailedMip = 0;
+
+    m_textureView = nullptr;
+    hRes = device.CreateShaderResourceView(
+      texture,
+      &textureViewDesc,
+      &m_textureView
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create a shader ressource view");
+    }
+    texture->Release();
+
+    // Create the sampler
+    D3D11_SAMPLER_DESC samplerDesc;
+    ZeroMemory(&samplerDesc, sizeof(samplerDesc));
+    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    samplerDesc.MaxAnisotropy = 0;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.MipLODBias = 0.0f;
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.BorderColor[0] = 0.0f;
+    samplerDesc.BorderColor[1] = 0.0f;
+    samplerDesc.BorderColor[2] = 0.0f;
+    samplerDesc.BorderColor[3] = 0.0f;
+
+    m_sampler = nullptr;
+    hRes = device.CreateSamplerState(
+      &samplerDesc,
+      &m_sampler
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create a sampler");
     }
   }
 
@@ -405,7 +531,7 @@ namespace dp {
     auto& deviceContext = m_d3d11Device.getDeviceContext();
     deviceContext.IASetInputLayout(m_inputLayout);
 
-    UINT stride = sizeof(DirectX::XMFLOAT2);
+    UINT stride = sizeof(details::TexturedVertex);
     UINT offset = 0;
     deviceContext.IASetVertexBuffers(
       0,
@@ -436,9 +562,21 @@ namespace dp {
       0
     );
 
+    deviceContext.PSSetShaderResources(
+      0,
+      1,
+      &m_textureView
+    );
+
+    deviceContext.PSSetSamplers(
+      0,
+      1,
+      &m_sampler
+    );
+
     // Draw the cube.
     deviceContext.DrawIndexed(
-      3,
+      6, // 6 indices
       0,
       0
     );
