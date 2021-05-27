@@ -60,7 +60,8 @@ PixelShaderInput SimpleVertexShader(VertexShaderInput input)
 
   const std::string pixelShaderCode =
 R"ps(
-Texture2D shaderTexture;
+Texture2D shaderTextureY : register(t0);
+Texture2D shaderTextureUV : register(t1);
 SamplerState SampleType;
 
 struct PixelShaderInput
@@ -71,8 +72,21 @@ struct PixelShaderInput
 
 float4 SimplePixelShader(PixelShaderInput input) : SV_TARGET
 {
-  // Draw the entire triangle yellow.
-  return shaderTexture.Sample(SampleType, input.tex);
+  float   y = shaderTextureY.Sample(SampleType, input.tex);
+
+  float2 uv = shaderTextureUV.Sample(SampleType, input.tex);
+  float   u = uv.x;
+  float   v = uv.y;
+
+  y = ((y * 255.0f) -  16.0f) / 255.0f;
+  u = ((u * 255.0f) - 128.0f) / 255.0f;
+  v = ((v * 255.0f) - 128.0f) / 255.0f;
+
+  float r = y * 1.164f              + 1.793f * v;
+  float g = y * 1.164f - 0.213f * u - 0.533f * v;
+  float b = y * 1.164f + 2.112f * u;
+
+  return float4(r, g, b, 1.0f);
 }
 )ps";
 
@@ -401,14 +415,14 @@ namespace dp {
 
     // Load raw texture
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    std::ifstream textureFile("sample.raw", std::ios::in | std::ios::binary);
+    std::ifstream textureFile("sample.yuv", std::ios::in | std::ios::binary);
     if (!textureFile.good()) {
-      throw std::runtime_error("[Window] Unable to open bitstream file 'sample.raw'");
+      throw std::runtime_error("[Window] Unable to open bitstream file 'sample.yuv'");
     }
     textureFile.unsetf(std::ios::skipws);
 
     // Load all data
-    std::vector<uint8_t> textureData(1920*1080*4);
+    std::vector<uint8_t> textureData(1920*1080*1.5);
     textureData.insert(textureData.begin(), std::istream_iterator<uint8_t>(textureFile), std::istream_iterator<uint8_t>());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "[Window] Texture loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
@@ -416,13 +430,13 @@ namespace dp {
     // Create the texture
     D3D11_SUBRESOURCE_DATA textureSubresourceData = { 0 };
     textureSubresourceData.pSysMem = textureData.data();
-    textureSubresourceData.SysMemPitch = 1920 * 4;
+    textureSubresourceData.SysMemPitch = 1920;
     textureSubresourceData.SysMemSlicePitch = 0;
 
     D3D11_TEXTURE2D_DESC textureDesc = { 0 };
     textureDesc.Width = 1920;
     textureDesc.Height = 1080;
-    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    textureDesc.Format = DXGI_FORMAT_R8_UNORM;
     textureDesc.Usage = D3D11_USAGE_DEFAULT;
     textureDesc.CPUAccessFlags = 0;
     textureDesc.MiscFlags = 0;
@@ -450,11 +464,55 @@ namespace dp {
     textureViewDesc.Texture2D.MipLevels = textureDesc.MipLevels;
     textureViewDesc.Texture2D.MostDetailedMip = 0;
 
-    m_textureView = nullptr;
+    m_textureYView = nullptr;
     hRes = device.CreateShaderResourceView(
       texture,
       &textureViewDesc,
-      &m_textureView
+      &m_textureYView
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create a shader ressource view");
+    }
+    texture->Release();
+
+    int offset = 1920 * 1080; // Skip Y plane
+    textureSubresourceData.pSysMem = textureData.data() + offset;
+    textureSubresourceData.SysMemPitch = 1920; // Since UV are interleaved
+    textureSubresourceData.SysMemSlicePitch = 0;
+
+    textureDesc.Width = 1920 / 2;
+    textureDesc.Height = 1080 / 2;
+    textureDesc.Format = DXGI_FORMAT_R8G8_UNORM;
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.CPUAccessFlags = 0;
+    textureDesc.MiscFlags = 0;
+    textureDesc.MipLevels = 1;
+    textureDesc.ArraySize = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    texture = nullptr;
+    hRes = device.CreateTexture2D(
+      &textureDesc,
+      &textureSubresourceData,
+      &texture
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create background texture");
+    }
+
+    // Create texture shader view
+    textureViewDesc.Format = textureDesc.Format;
+    textureViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    textureViewDesc.Texture2D.MipLevels = textureDesc.MipLevels;
+    textureViewDesc.Texture2D.MostDetailedMip = 0;
+
+    m_textureUVView = nullptr;
+    hRes = device.CreateShaderResourceView(
+      texture,
+      &textureViewDesc,
+      &m_textureUVView
     );
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to create a shader ressource view");
@@ -496,6 +554,9 @@ namespace dp {
     m_inputLayout->Release();
     m_indexBuffer->Release();
     m_vertexBuffer->Release();
+    m_textureYView->Release();
+    m_textureUVView->Release();
+    m_sampler->Release();
   }
 
   bool Window::isActive() const {
@@ -562,10 +623,15 @@ namespace dp {
       0
     );
 
+    ID3D11ShaderResourceView* shaderResources[] = {
+      m_textureYView,
+      m_textureUVView
+    };
+
     deviceContext.PSSetShaderResources(
       0,
-      1,
-      &m_textureView
+      2,
+      shaderResources
     );
 
     deviceContext.PSSetSamplers(
