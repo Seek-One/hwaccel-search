@@ -48,10 +48,11 @@ namespace dp {
     bool isActive() const;
     void procMessage();
     void clear();
-    void render();
+    void render(ID3D11Texture2D* decodedTexture);
 
   private:
     D3D11Device& m_d3d11Device;
+    D3D11Decoder& m_d3d11Decoder;
     IDXGISwapChain1* m_swapChain;
     ID3D11RenderTargetView* m_renderView;
     D3D11_VIEWPORT m_viewport;
@@ -63,6 +64,7 @@ namespace dp {
     ID3D11VideoProcessorEnumerator* m_videoProcessorEnumerator;
     ID3D11VideoProcessor* m_videoProcessor;
     ID3D11Texture2D* m_textureBGRA;
+    ID3D11VideoProcessorOutputView* m_outputView;
   };
 }
 

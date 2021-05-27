@@ -185,7 +185,7 @@ namespace dp {
     m_videoDevice->Release();
   }
 
-  void D3D11Decoder::decodeSlice(FileParser& parser) {
+  ID3D11Texture2D* D3D11Decoder::decodeSlice(FileParser& parser) {
     D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
     // To send a slice to the decoder, we need to fill and send 4 buffers :
     // - D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS
@@ -237,30 +237,97 @@ namespace dp {
     }
 
     // Create a temporary texture -- move to member variable?
-    D3D11_TEXTURE2D_DESC gpuTextureDesc;
-    m_texture->GetDesc(&gpuTextureDesc);
+    // D3D11_TEXTURE2D_DESC gpuTextureDesc;
+    // m_texture->GetDesc(&gpuTextureDesc);
 
-    D3D11_TEXTURE2D_DESC cpuTextureDesc;
-    cpuTextureDesc.Width = gpuTextureDesc.Width;
-    cpuTextureDesc.Height = gpuTextureDesc.Height;
-    cpuTextureDesc.MipLevels = gpuTextureDesc.MipLevels;
-    cpuTextureDesc.ArraySize = 1; // We copy only the current texture
-    cpuTextureDesc.Format = gpuTextureDesc.Format;
-    cpuTextureDesc.SampleDesc = gpuTextureDesc.SampleDesc;
-    cpuTextureDesc.Usage = D3D11_USAGE_STAGING;
-    cpuTextureDesc.BindFlags = 0;
-    cpuTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    cpuTextureDesc.MiscFlags = 0;
+    // D3D11_TEXTURE2D_DESC cpuTextureDesc;
+    // cpuTextureDesc.Width = gpuTextureDesc.Width;
+    // cpuTextureDesc.Height = gpuTextureDesc.Height;
+    // cpuTextureDesc.MipLevels = gpuTextureDesc.MipLevels;
+    // cpuTextureDesc.ArraySize = 1; // We copy only the current texture
+    // cpuTextureDesc.Format = gpuTextureDesc.Format;
+    // cpuTextureDesc.SampleDesc = gpuTextureDesc.SampleDesc;
+    // cpuTextureDesc.Usage = D3D11_USAGE_STAGING;
+    // cpuTextureDesc.BindFlags = 0;
+    // cpuTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    // cpuTextureDesc.MiscFlags = 0;
 
-    ID3D11Texture2D* cpuTexture = nullptr;
-    hRes = m_d3d11Device.getDevice().CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
+    // ID3D11Texture2D* cpuTexture = nullptr;
+    // hRes = m_d3d11Device.getDevice().CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
+    // if (FAILED(hRes)) {
+    //   throw std::runtime_error("[D3D11Decoder] Unable to create CPU ID3D11Texture2D");
+    // }
+
+    // // copy the texture to a staging resource
+    // m_d3d11Device.getDeviceContext().CopySubresourceRegion(
+    //   cpuTexture,
+    //   0,
+    //   0,
+    //   0,
+    //   0,
+    //   m_texture,
+    //   0,
+    //   nullptr
+    // );
+
+    // // Map the staging resource
+    // D3D11_MAPPED_SUBRESOURCE mapInfo;
+    // hRes = m_d3d11Device.getDeviceContext().Map(
+    //   cpuTexture,
+    //   0,
+    //   D3D11_MAP_READ,
+    //   0,
+    //   &mapInfo
+    // );
+    // if (FAILED(hRes)) {
+    //   throw std::runtime_error("[D3D11Decoder] Unable to map cpu texture");
+    // }
+
+    // uint8_t* yuvData = static_cast<uint8_t*>(mapInfo.pData);
+
+    // auto file = std::fstream("dump.yuv", std::ios::out | std::ios::app | std::ios::binary);
+
+    // // Copy luma
+    // SizeI pictureSize = parser.getRealPictureSize();
+    // for (int h = 0; h < pictureSize.height; ++h) {
+    //   assert(yuvData < ((static_cast<uint8_t*>(mapInfo.pData) + mapInfo.DepthPitch) - mapInfo.RowPitch));
+    //   file.write(reinterpret_cast<const char*>(yuvData), pictureSize.width);
+    //   yuvData += mapInfo.RowPitch;
+    // }
+
+    // // Skip cropped rows
+    // SizeI rawPictureSize = parser.getRawPictureSize();
+    // int skipCount = rawPictureSize.height - pictureSize.height;
+    // yuvData += mapInfo.RowPitch * skipCount;
+
+    // // Copy color
+    // for (int h = 0; h < (pictureSize.height / 2); ++h) {
+    //   assert(yuvData < (((uint8_t*)mapInfo.pData + mapInfo.DepthPitch) - mapInfo.RowPitch));
+    //   file.write((char*)yuvData, pictureSize.width);
+    //   yuvData += mapInfo.RowPitch;
+    // }
+
+    // file.close();
+
+    // cpuTexture->Release();
+    // std::cout << "[D3D11Decoder] Dump YUV" << std::endl;
+
+    // Copy the texture for the filtering
+    D3D11_TEXTURE2D_DESC copyTextureDesc;
+    m_texture->GetDesc(&copyTextureDesc);
+
+    copyTextureDesc.ArraySize = 1;
+    copyTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    copyTextureDesc.BindFlags = 0;
+
+    ID3D11Texture2D* copyTexture = nullptr;
+    hRes = m_d3d11Device.getDevice().CreateTexture2D(&copyTextureDesc, nullptr, &copyTexture);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to create CPU ID3D11Texture2D");
+      throw std::runtime_error("[D3D11Decoder] Unable to copy GPU ID3D11Texture2D");
     }
 
-    // copy the texture to a staging resource
     m_d3d11Device.getDeviceContext().CopySubresourceRegion(
-      cpuTexture,
+      copyTexture,
       0,
       0,
       0,
@@ -270,50 +337,10 @@ namespace dp {
       nullptr
     );
 
-    // Map the staging resource
-    D3D11_MAPPED_SUBRESOURCE mapInfo;
-    hRes = m_d3d11Device.getDeviceContext().Map(
-      cpuTexture,
-      0,
-      D3D11_MAP_READ,
-      0,
-      &mapInfo
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to map cpu texture");
-    }
-
-    uint8_t* yuvData = static_cast<uint8_t*>(mapInfo.pData);
-
-    auto file = std::fstream("dump.yuv", std::ios::out | std::ios::app | std::ios::binary);
-
-    // Copy luma
-    SizeI pictureSize = parser.getRealPictureSize();
-    for (int h = 0; h < pictureSize.height; ++h) {
-      assert(yuvData < ((static_cast<uint8_t*>(mapInfo.pData) + mapInfo.DepthPitch) - mapInfo.RowPitch));
-      file.write(reinterpret_cast<const char*>(yuvData), pictureSize.width);
-      yuvData += mapInfo.RowPitch;
-    }
-
-    // Skip cropped rows
-    SizeI rawPictureSize = parser.getRawPictureSize();
-    int skipCount = rawPictureSize.height - pictureSize.height;
-    yuvData += mapInfo.RowPitch * skipCount;
-
-    // Copy color
-    for (int h = 0; h < (pictureSize.height / 2); ++h) {
-      assert(yuvData < (((uint8_t*)mapInfo.pData + mapInfo.DepthPitch) - mapInfo.RowPitch));
-      file.write((char*)yuvData, pictureSize.width);
-      yuvData += mapInfo.RowPitch;
-    }
-
-    file.close();
-
-    cpuTexture->Release();
-    std::cout << "[D3D11Decoder] Dump YUV" << std::endl;
-
     // Select the new surface index
     m_currentSurfaceIndex = getNextAvailableSurfaceIndex();
+
+    return copyTexture;
   }
 
   ID3D11VideoDevice& D3D11Decoder::getVideoDevice() {

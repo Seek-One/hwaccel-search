@@ -51,18 +51,18 @@ int main(int argc, char* argv[]) {
 
   while (window.isActive()) {
     window.procMessage();
-    window.clear();
-    window.render();
 
     // If it's the end of stream, we only keep the window
-    // if (!fileParser.parseNextNAL()) {
-    //   continue;
-    // }
+    const auto& stream = fileParser.getStream();
+    if (!fileParser.parseNextNAL() || (stream.nal->nal_unit_type != NAL_UNIT_TYPE_CODED_SLICE_IDR && stream.nal->nal_unit_type != NAL_UNIT_TYPE_CODED_SLICE_NON_IDR)) {
+      continue;
+    }
 
-    // const auto& stream = fileParser.getStream();
-    // std::cout << "nal_unit_type: " << stream.nal->nal_unit_type << std::endl;
+    window.clear();
 
-    // decoder.decodeSlice(fileParser);
+    auto decodedTexture = decoder.decodeSlice(fileParser);
+
+    window.render(decodedTexture);
   }
 
   return 0;

@@ -50,7 +50,7 @@ namespace dp {
     D3D11Decoder& operator=(const D3D11Decoder&) = delete;
     D3D11Decoder& operator=(D3D11Decoder&&) = delete;
 
-    void decodeSlice(FileParser& parser);
+    ID3D11Texture2D* decodeSlice(FileParser& parser);
 
     ID3D11VideoDevice& getVideoDevice();
     ID3D11VideoContext& getVideoContext();
