@@ -21,8 +21,9 @@
 
 #include "FileParser.h"
 
-#include <fstream>
+#include <iostream>
 #include <iterator>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 
@@ -42,6 +43,7 @@ namespace dp {
       throw std::runtime_error("[FileParser] Unable to create h264 parser");
     }
 
+    auto begin = std::chrono::steady_clock::now();
     std::ifstream bitstreamFile(bitstreamPath, std::ios::in | std::ios::binary);
     if (!bitstreamFile.good()) {
       throw std::runtime_error("[FileParser] Unable to open bitstream file '" + bitstreamPath.string() + "'");
@@ -53,6 +55,8 @@ namespace dp {
     m_bitstreamData.insert(m_bitstreamData.begin(), std::istream_iterator<uint8_t>(bitstreamFile), std::istream_iterator<uint8_t>());
     m_dataCursor = m_bitstreamData.data();
     m_unprocessedDataSize = static_cast<int>(m_bitstreamData.size());
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "[FileParser] Bitstream loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
   }
 
   FileParser::~FileParser() {
