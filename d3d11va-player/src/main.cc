@@ -41,13 +41,13 @@ int main(int argc, char* argv[]) {
   // Remove previous dump file
   std::filesystem::remove("dump.yuv");
 
-  // dp::FileParser fileParser(argv[1]);
-  // fileParser.extractPictureSizes();
-  // auto rawPictureSize = fileParser.getRawPictureSize();
+  dp::FileParser fileParser(argv[1]);
+  fileParser.extractPictureSizes();
+  auto rawPictureSize = fileParser.getRawPictureSize();
 
   dp::D3D11Device device;
-  // dp::D3D11Decoder decoder(device, rawPictureSize);
-  dp::Window window(device);
+  dp::D3D11Decoder decoder(device, rawPictureSize);
+  dp::Window window(device, decoder);
 
   while (window.isActive()) {
     window.procMessage();

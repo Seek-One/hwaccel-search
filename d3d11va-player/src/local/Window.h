@@ -32,10 +32,11 @@
 
 namespace dp {
   class D3D11Device;
+  class D3D11Decoder;
 
   class Window {
   public:
-    Window(D3D11Device& d3d11Device);
+    Window(D3D11Device& d3d11Device, D3D11Decoder& decoder);
     ~Window();
 
     Window(const Window&) = delete;
@@ -59,14 +60,9 @@ namespace dp {
     const LPCWSTR m_szWindowClass;
     bool m_isActive;
 
-    ID3D11VertexShader* m_vertexShader;
-    ID3D11PixelShader* m_pixelShader;
-    ID3D11InputLayout* m_inputLayout;
-    ID3D11Buffer* m_vertexBuffer;
-    ID3D11Buffer* m_indexBuffer;
-    ID3D11ShaderResourceView* m_textureYView;
-    ID3D11ShaderResourceView* m_textureUVView;
-    ID3D11SamplerState* m_sampler;
+    ID3D11VideoProcessorEnumerator* m_videoProcessorEnumerator;
+    ID3D11VideoProcessor* m_videoProcessor;
+    ID3D11Texture2D* m_textureBGRA;
   };
 }
 

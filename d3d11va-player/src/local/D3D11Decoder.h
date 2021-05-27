@@ -52,6 +52,9 @@ namespace dp {
 
     void decodeSlice(FileParser& parser);
 
+    ID3D11VideoDevice& getVideoDevice();
+    ID3D11VideoContext& getVideoContext();
+
   private:
     void fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser);
     void fillScalingLists(DXVA_Qmatrix_H264& scalingLists, const FileParser& parser);

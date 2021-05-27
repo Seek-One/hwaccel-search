@@ -30,79 +30,10 @@
 #include <d3dcompiler.h>
 #include <directxmath.h>
 
+#include "D3D11Decoder.h"
 #include "D3D11Device.h"
 
 namespace details {
-  const std::string vertexShaderCode =
-R"vs(
-struct VertexShaderInput
-{
-  float2 pos : POSITION;
-  float2 tex : TEXCOORD;
-};
-
-struct PixelShaderInput
-{
-  float4 pos : SV_POSITION;
-  float2 tex : TEXCOORD;
-};
-
-PixelShaderInput SimpleVertexShader(VertexShaderInput input)
-{
-  PixelShaderInput vertexShaderOutput;
-
-  vertexShaderOutput.pos = float4(input.pos, 0.5f, 1.0f);
-  vertexShaderOutput.tex = input.tex;// float4(1.0f, 1.0f, 0.0f, 1.0f);
-
-  return vertexShaderOutput;
-}
-)vs";
-
-  const std::string pixelShaderCode =
-R"ps(
-Texture2D shaderTextureY : register(t0);
-Texture2D shaderTextureUV : register(t1);
-SamplerState SampleType;
-
-struct PixelShaderInput
-{
-  float4 pos : SV_POSITION;
-  float2 tex : TEXCOORD;
-};
-
-float4 SimplePixelShader(PixelShaderInput input) : SV_TARGET
-{
-  float   y = shaderTextureY.Sample(SampleType, input.tex);
-
-  float2 uv = shaderTextureUV.Sample(SampleType, input.tex);
-  float   u = uv.x;
-  float   v = uv.y;
-
-  y = ((y * 255.0f) -  16.0f) / 255.0f;
-  u = ((u * 255.0f) - 128.0f) / 255.0f;
-  v = ((v * 255.0f) - 128.0f) / 255.0f;
-
-  float r = y * 1.164f              + 1.793f * v;
-  float g = y * 1.164f - 0.213f * u - 0.533f * v;
-  float b = y * 1.164f + 2.112f * u;
-
-  return float4(r, g, b, 1.0f);
-}
-)ps";
-
-  struct TexturedVertex {
-    DirectX::XMFLOAT2 pos;
-    DirectX::XMFLOAT2 tex;
-  };
-
-  void logShaderErrors(ID3D10Blob* errorMessage) {
-    std::string errorString(reinterpret_cast<const char*>(errorMessage->GetBufferPointer()), errorMessage->GetBufferSize());
-
-    std::cerr << "[Window] Shader compilation errors: " << errorString << std::endl;
-
-    errorMessage->Release();
-  }
-
   LRESULT CALLBACK procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_DESTROY:
@@ -116,7 +47,7 @@ float4 SimplePixelShader(PixelShaderInput input) : SV_TARGET
 }
 
 namespace dp {
-  Window::Window(D3D11Device& d3d11Device)
+  Window::Window(D3D11Device& d3d11Device, D3D11Decoder& decoder)
   : m_d3d11Device(d3d11Device)
   , m_swapChain(nullptr)
   , m_renderView(nullptr)
@@ -246,173 +177,6 @@ namespace dp {
 
     backBuffer->Release();
 
-    // Compile vertex shader
-    ID3D10Blob* vertexShaderBuffer = nullptr;
-    ID3D10Blob* errorMessage = nullptr;
-    hRes = D3DCompile(
-      details::vertexShaderCode.data(),
-      details::vertexShaderCode.size(),
-      "SimpleVertexShader",
-      nullptr,
-      D3D_COMPILE_STANDARD_FILE_INCLUDE,
-      "SimpleVertexShader",
-      "vs_5_0",
-      0,
-      0,
-      &vertexShaderBuffer,
-      &errorMessage
-    );
-    if (FAILED(hRes)) {
-      details::logShaderErrors(errorMessage);
-      throw std::runtime_error("[Window] Unable to compile vertex shader");
-    }
-
-    // Create vertex shader
-    m_vertexShader = nullptr;
-    hRes = device.CreateVertexShader(
-      vertexShaderBuffer->GetBufferPointer(),
-      vertexShaderBuffer->GetBufferSize(),
-      nullptr,
-      &m_vertexShader
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create vertex shader");
-    }
-
-    // Create an input layout
-    const D3D11_INPUT_ELEMENT_DESC basicVertexLayoutDesc[] = {
-      { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-      { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    };
-
-    m_inputLayout = nullptr;
-    hRes = device.CreateInputLayout(
-      basicVertexLayoutDesc,
-      ARRAYSIZE(basicVertexLayoutDesc),
-      vertexShaderBuffer->GetBufferPointer(),
-      vertexShaderBuffer->GetBufferSize(),
-      &m_inputLayout
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a input layout for vertex shader");
-    }
-
-    vertexShaderBuffer->Release();
-
-    // Compile pixel shader
-    ID3D10Blob* pixelShaderBuffer = nullptr;
-    hRes = D3DCompile(
-      details::pixelShaderCode.data(),
-      details::pixelShaderCode.size(),
-      "SimplePixelShader",
-      nullptr,
-      nullptr,
-      "SimplePixelShader",
-      "ps_5_0",
-      0,
-      0,
-      &pixelShaderBuffer,
-      &errorMessage
-    );
-    if (FAILED(hRes)) {
-      details::logShaderErrors(errorMessage);
-      throw std::runtime_error("[Window] Unable to compile pixel shader");
-    }
-
-    // Create pixel shader
-    m_pixelShader = nullptr;
-    hRes = device.CreatePixelShader(
-      pixelShaderBuffer->GetBufferPointer(),
-      pixelShaderBuffer->GetBufferSize(),
-      nullptr,
-      &m_pixelShader
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create pixel shader");
-    }
-
-    pixelShaderBuffer->Release();
-
-    // Create primitive
-    details::TexturedVertex triangleVertices[] = {
-      {
-        DirectX::XMFLOAT2(-1.0f,  1.0f),
-        DirectX::XMFLOAT2( 0.0f,  0.0f)
-      },
-      {
-        DirectX::XMFLOAT2( 1.0f, -1.0f),
-        DirectX::XMFLOAT2( 1.0f,  1.0f)
-      },
-      {
-        DirectX::XMFLOAT2(-1.0f, -1.0f),
-        DirectX::XMFLOAT2( 0.0f,  1.0f)
-      },
-
-      {
-        DirectX::XMFLOAT2(-1.0f,  1.0f),
-        DirectX::XMFLOAT2( 0.0f,  0.0f)
-      },
-      {
-        DirectX::XMFLOAT2( 1.0f,  1.0f),
-        DirectX::XMFLOAT2( 1.0f,  0.0f)
-      },
-      {
-        DirectX::XMFLOAT2( 1.0f, -1.0f),
-        DirectX::XMFLOAT2( 1.0f,  1.0f)
-      },
-    };
-
-    unsigned short triangleIndices[] = {
-        0, 1, 2,
-        3, 4, 5,
-    };
-
-    D3D11_BUFFER_DESC vertexBufferDesc = {0};
-    vertexBufferDesc.ByteWidth = sizeof(details::TexturedVertex) * ARRAYSIZE(triangleVertices);
-    vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    vertexBufferDesc.CPUAccessFlags = 0;
-    vertexBufferDesc.MiscFlags = 0;
-    vertexBufferDesc.StructureByteStride = 0;
-
-    D3D11_SUBRESOURCE_DATA vertexBufferData;
-    vertexBufferData.pSysMem = triangleVertices;
-    vertexBufferData.SysMemPitch = 0;
-    vertexBufferData.SysMemSlicePitch = 0;
-
-    m_vertexBuffer = nullptr;
-    hRes = device.CreateBuffer(
-      &vertexBufferDesc,
-      &vertexBufferData,
-      &m_vertexBuffer
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a buffer");
-    }
-
-    D3D11_BUFFER_DESC indexBufferDesc;
-    indexBufferDesc.ByteWidth = sizeof(unsigned short) * ARRAYSIZE(triangleIndices);
-    indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    indexBufferDesc.CPUAccessFlags = 0;
-    indexBufferDesc.MiscFlags = 0;
-    indexBufferDesc.StructureByteStride = 0;
-
-    D3D11_SUBRESOURCE_DATA indexBufferData;
-    indexBufferData.pSysMem = triangleIndices;
-    indexBufferData.SysMemPitch = 0;
-    indexBufferData.SysMemSlicePitch = 0;
-
-    m_indexBuffer = nullptr;
-    hRes = device.CreateBuffer(
-      &indexBufferDesc,
-      &indexBufferData,
-      &m_indexBuffer
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a buffer");
-    }
-
     // Load raw texture
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::ifstream textureFile("sample.yuv", std::ios::in | std::ios::binary);
@@ -422,12 +186,12 @@ namespace dp {
     textureFile.unsetf(std::ios::skipws);
 
     // Load all data
-    std::vector<uint8_t> textureData(1920*1080*1.5);
+    std::vector<uint8_t> textureData(static_cast<size_t>(1920.0*1080.0*1.5));
     textureData.insert(textureData.begin(), std::istream_iterator<uint8_t>(textureFile), std::istream_iterator<uint8_t>());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "[Window] Texture loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 
-    // Create the texture
+    // Load all texture from file
     D3D11_SUBRESOURCE_DATA textureSubresourceData = { 0 };
     textureSubresourceData.pSysMem = textureData.data();
     textureSubresourceData.SysMemPitch = 1920;
@@ -436,7 +200,7 @@ namespace dp {
     D3D11_TEXTURE2D_DESC textureDesc = { 0 };
     textureDesc.Width = 1920;
     textureDesc.Height = 1080;
-    textureDesc.Format = DXGI_FORMAT_R8_UNORM;
+    textureDesc.Format = DXGI_FORMAT_NV12;
     textureDesc.Usage = D3D11_USAGE_DEFAULT;
     textureDesc.CPUAccessFlags = 0;
     textureDesc.MiscFlags = 0;
@@ -444,45 +208,73 @@ namespace dp {
     textureDesc.ArraySize = 1;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.SampleDesc.Quality = 0;
-    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    textureDesc.BindFlags = 0;
 
-    ID3D11Texture2D* texture = nullptr;
+    ID3D11Texture2D* textureYUV = nullptr;
     hRes = device.CreateTexture2D(
       &textureDesc,
       &textureSubresourceData,
-      &texture
+      &textureYUV
     );
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create background texture");
+      throw std::runtime_error("[Window] Unable to create YUV texture");
     }
 
-    // Create texture shader view
-    D3D11_SHADER_RESOURCE_VIEW_DESC textureViewDesc;
-    ZeroMemory(&textureViewDesc, sizeof(textureViewDesc));
-    textureViewDesc.Format = textureDesc.Format;
-    textureViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    textureViewDesc.Texture2D.MipLevels = textureDesc.MipLevels;
-    textureViewDesc.Texture2D.MostDetailedMip = 0;
+    // Create a video processor
+    // First, create a video processor enumerator
+    D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
+    ZeroMemory( &ContentDesc, sizeof( ContentDesc ) );
+    ContentDesc.InputFrameFormat = D3D11_VIDEO_FRAME_FORMAT_INTERLACED_TOP_FIELD_FIRST;
+    ContentDesc.InputWidth = 1920;
+    ContentDesc.InputHeight = 1080;
+    ContentDesc.OutputWidth = backBufferDesc.Width;
+    ContentDesc.OutputHeight = backBufferDesc.Height;
+    ContentDesc.Usage = D3D11_VIDEO_USAGE_PLAYBACK_NORMAL;
 
-    m_textureYView = nullptr;
-    hRes = device.CreateShaderResourceView(
-      texture,
-      &textureViewDesc,
-      &m_textureYView
-    );
+    auto& videoDevice = decoder.getVideoDevice();
+    hRes = videoDevice.CreateVideoProcessorEnumerator(&ContentDesc, &m_videoProcessorEnumerator);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a shader ressource view");
+      throw std::runtime_error("[Window] Unable to create a video processor enumerator");
     }
-    texture->Release();
 
-    int offset = 1920 * 1080; // Skip Y plane
-    textureSubresourceData.pSysMem = textureData.data() + offset;
-    textureSubresourceData.SysMemPitch = 1920; // Since UV are interleaved
-    textureSubresourceData.SysMemSlicePitch = 0;
+    UINT uiFlags;
 
-    textureDesc.Width = 1920 / 2;
-    textureDesc.Height = 1080 / 2;
-    textureDesc.Format = DXGI_FORMAT_R8G8_UNORM;
+    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
+    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
+      throw std::runtime_error("[Window] NV12 is not supported as input format");
+    }
+
+    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_B8G8R8A8_UNORM, &uiFlags);
+    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
+      throw std::runtime_error("[Window] BGRA is not supported as output format");
+    }
+
+    // TODO: which caps check? index == 0
+
+    // Second effective creation
+    hRes = videoDevice.CreateVideoProcessor(m_videoProcessorEnumerator, 0, &m_videoProcessor);
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create a video processor");
+    }
+
+    // Create video processor input view
+    D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC inputViewDesc;
+    ZeroMemory(&inputViewDesc, sizeof(D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC));
+    inputViewDesc.FourCC = 0;
+    inputViewDesc.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
+    inputViewDesc.Texture2D.MipSlice = 0;
+    inputViewDesc.Texture2D.ArraySlice = 0;
+
+    ID3D11VideoProcessorInputView* inputView = nullptr;
+    hRes = videoDevice.CreateVideoProcessorInputView(textureYUV, m_videoProcessorEnumerator, &inputViewDesc, &inputView);
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to create a video processor input view");
+    }
+
+    // Create the output BGRA texture
+    textureDesc.Width = backBufferDesc.Width;
+    textureDesc.Height = backBufferDesc.Height;
+    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     textureDesc.Usage = D3D11_USAGE_DEFAULT;
     textureDesc.CPUAccessFlags = 0;
     textureDesc.MiscFlags = 0;
@@ -490,73 +282,63 @@ namespace dp {
     textureDesc.ArraySize = 1;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.SampleDesc.Quality = 0;
-    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 
-    texture = nullptr;
+    m_textureBGRA = nullptr;
     hRes = device.CreateTexture2D(
       &textureDesc,
-      &textureSubresourceData,
-      &texture
+      nullptr,
+      &m_textureBGRA
     );
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create background texture");
+      throw std::runtime_error("[Window] Unable to create BGRA output texture");
     }
 
-    // Create texture shader view
-    textureViewDesc.Format = textureDesc.Format;
-    textureViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    textureViewDesc.Texture2D.MipLevels = textureDesc.MipLevels;
-    textureViewDesc.Texture2D.MostDetailedMip = 0;
+    // Create video processor output view
+    D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC outputViewDesc;
+    ZeroMemory(&outputViewDesc, sizeof(D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC));
+    outputViewDesc.ViewDimension =  D3D11_VPOV_DIMENSION_TEXTURE2D;
+    outputViewDesc.Texture2D.MipSlice = 0;
+    outputViewDesc.Texture2DArray.MipSlice = 0;
+    outputViewDesc.Texture2DArray.FirstArraySlice = 0;
+    outputViewDesc.Texture2DArray.ArraySize = 1;
 
-    m_textureUVView = nullptr;
-    hRes = device.CreateShaderResourceView(
-      texture,
-      &textureViewDesc,
-      &m_textureUVView
-    );
+    ID3D11VideoProcessorOutputView* outputView = nullptr;
+    hRes = videoDevice.CreateVideoProcessorOutputView(m_textureBGRA, m_videoProcessorEnumerator, &outputViewDesc, &outputView);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a shader ressource view");
+      throw std::runtime_error("[Window] Unable to create a video processor input view");
     }
-    texture->Release();
 
-    // Create the sampler
-    D3D11_SAMPLER_DESC samplerDesc;
-    ZeroMemory(&samplerDesc, sizeof(samplerDesc));
-    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    samplerDesc.MaxAnisotropy = 0;
-    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.MipLODBias = 0.0f;
-    samplerDesc.MinLOD = 0;
-    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    samplerDesc.BorderColor[0] = 0.0f;
-    samplerDesc.BorderColor[1] = 0.0f;
-    samplerDesc.BorderColor[2] = 0.0f;
-    samplerDesc.BorderColor[3] = 0.0f;
+    D3D11_VIDEO_PROCESSOR_STREAM streamData;
+    ZeroMemory(&streamData, sizeof(D3D11_VIDEO_PROCESSOR_STREAM));
+    streamData.Enable = TRUE;
+    streamData.OutputIndex = 0;
+    streamData.InputFrameOrField = 0;
+    streamData.PastFrames = 0;
+    streamData.FutureFrames = 0;
+    streamData.ppPastSurfaces = nullptr;
+    streamData.ppFutureSurfaces = nullptr;
+    streamData.pInputSurface = inputView;
+    streamData.ppPastSurfacesRight = nullptr;
+    streamData.ppFutureSurfacesRight = nullptr;
 
-    m_sampler = nullptr;
-    hRes = device.CreateSamplerState(
-      &samplerDesc,
-      &m_sampler
-    );
+    auto& videoContext = decoder.getVideoContext();
+    hRes = videoContext.VideoProcessorBlt(m_videoProcessor, outputView, 0, 1, &streamData);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a sampler");
+      throw std::runtime_error("[Window] Unable to process the frame");
     }
+
+    textureYUV->Release();
+    inputView->Release();
+    outputView->Release();
   }
 
   Window::~Window() {
     m_swapChain->Release();
     m_renderView->Release();
-    m_vertexShader->Release();
-    m_pixelShader->Release();
-    m_inputLayout->Release();
-    m_indexBuffer->Release();
-    m_vertexBuffer->Release();
-    m_textureYView->Release();
-    m_textureUVView->Release();
-    m_sampler->Release();
+    m_videoProcessorEnumerator->Release();
+    m_videoProcessor->Release();
+    m_textureBGRA->Release();
   }
 
   bool Window::isActive() const {
@@ -565,7 +347,7 @@ namespace dp {
 
   void Window::procMessage() {
     MSG msg;
-    PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+    PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
     if (!TranslateAccelerator(msg.hwnd, nullptr, &msg)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
@@ -589,65 +371,16 @@ namespace dp {
   }
 
   void Window::render() {
-    auto& deviceContext = m_d3d11Device.getDeviceContext();
-    deviceContext.IASetInputLayout(m_inputLayout);
+    ID3D11Texture2D* backBuffer = nullptr;
+    HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Window] Unable to get backbuffer");
+    }
 
-    UINT stride = sizeof(details::TexturedVertex);
-    UINT offset = 0;
-    deviceContext.IASetVertexBuffers(
-      0,
-      1,
-      &m_vertexBuffer,
-      &stride,
-      &offset
-    );
+    m_d3d11Device.getDeviceContext().CopyResource(backBuffer, m_textureBGRA);
+    backBuffer->Release();
 
-    deviceContext.IASetIndexBuffer(
-      m_indexBuffer,
-      DXGI_FORMAT_R16_UINT,
-      0
-    );
-
-    deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    // Set the vertex and pixel shader stage state
-    deviceContext.VSSetShader(
-      m_vertexShader,
-      nullptr,
-      0
-    );
-
-    deviceContext.PSSetShader(
-      m_pixelShader,
-      nullptr,
-      0
-    );
-
-    ID3D11ShaderResourceView* shaderResources[] = {
-      m_textureYView,
-      m_textureUVView
-    };
-
-    deviceContext.PSSetShaderResources(
-      0,
-      2,
-      shaderResources
-    );
-
-    deviceContext.PSSetSamplers(
-      0,
-      1,
-      &m_sampler
-    );
-
-    // Draw the cube.
-    deviceContext.DrawIndexed(
-      6, // 6 indices
-      0,
-      0
-    );
-
-    HRESULT hRes = m_swapChain->Present(1, 0);
+    hRes = m_swapChain->Present(1, 0);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to present the swapchain");
     }

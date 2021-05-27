@@ -316,6 +316,14 @@ namespace dp {
     m_currentSurfaceIndex = getNextAvailableSurfaceIndex();
   }
 
+  ID3D11VideoDevice& D3D11Decoder::getVideoDevice() {
+    return *m_videoDevice;
+  }
+
+  ID3D11VideoContext& D3D11Decoder::getVideoContext() {
+    return *m_videoContext;
+  }
+
   void D3D11Decoder::fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser) {
     const h264_stream_t& stream = parser.getStream();
     const nal_t& nal = *stream.nal;
