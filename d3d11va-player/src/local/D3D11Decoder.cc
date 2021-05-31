@@ -41,6 +41,19 @@ namespace {
 }
 
 namespace dp {
+  DecodedTexture::DecodedTexture(ID3D11Texture2D* t, UINT i)
+  : texture(t)
+  , index(i) {
+    if (texture == nullptr) {
+      throw std::runtime_error("[DecodedTexture] The texture must be defined");
+    }
+    texture->AddRef();
+  }
+
+  DecodedTexture::~DecodedTexture() {
+    texture->Release();
+  }
+
   D3D11Decoder::D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize)
   : m_d3d11Device(d3d11Device)
   , m_videoDevice(nullptr)
@@ -185,7 +198,7 @@ namespace dp {
     m_videoDevice->Release();
   }
 
-  ID3D11Texture2D* D3D11Decoder::decodeSlice(FileParser& parser) {
+  DecodedTexture D3D11Decoder::decodeSlice(FileParser& parser) {
     D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
     // To send a slice to the decoder, we need to fill and send 4 buffers :
     // - D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS
@@ -236,35 +249,18 @@ namespace dp {
       m_dpb.addRefFrame(picParams.CurrPic, picParams.frame_num, picParams.CurrFieldOrderCnt[0], picParams.CurrFieldOrderCnt[1]);
     }
 
-    // Copy the texture for the filtering
-    D3D11_TEXTURE2D_DESC copyTextureDesc;
-    m_texture->GetDesc(&copyTextureDesc);
-
-    copyTextureDesc.ArraySize = 1;
-    copyTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-    copyTextureDesc.BindFlags = 0;
-
-    ID3D11Texture2D* copyTexture = nullptr;
-    hRes = m_d3d11Device.getDevice().CreateTexture2D(&copyTextureDesc, nullptr, &copyTexture);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to copy GPU ID3D11Texture2D");
-    }
-
-    m_d3d11Device.getDeviceContext().CopySubresourceRegion(
-      copyTexture,
-      0,
-      0,
-      0,
-      0,
-      m_texture,
-      m_currentSurfaceIndex,
-      nullptr
-    );
-
     // Select the new surface index
+    UINT oldIndex = m_currentSurfaceIndex;
     m_currentSurfaceIndex = getNextAvailableSurfaceIndex();
 
-    return copyTexture;
+    return DecodedTexture(m_texture, oldIndex);
+  }
+
+  SizeI D3D11Decoder::getPictureSize() const {
+    D3D11_TEXTURE2D_DESC desc;
+    m_texture->GetDesc(&desc);
+
+    return SizeI(desc.Width, desc.Height);
   }
 
   ID3D11VideoDevice& D3D11Decoder::getVideoDevice() {

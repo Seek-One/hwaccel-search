@@ -33,6 +33,7 @@
 namespace dp {
   class D3D11Device;
   class D3D11Decoder;
+  struct DecodedTexture;
 
   class Window {
   public:
@@ -48,7 +49,7 @@ namespace dp {
     bool isActive() const;
     void procMessage();
     void clear();
-    void render(ID3D11Texture2D* decodedTexture);
+    void render(const DecodedTexture& decodedTexture);
 
   private:
     D3D11Device& m_d3d11Device;
@@ -65,6 +66,7 @@ namespace dp {
     ID3D11VideoProcessor* m_videoProcessor;
     ID3D11Texture2D* m_textureBGRA;
     ID3D11VideoProcessorOutputView* m_outputView;
+    D3D11_VIDEO_PROCESSOR_STREAM m_streamData;
   };
 }
 

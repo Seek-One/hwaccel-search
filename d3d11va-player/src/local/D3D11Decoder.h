@@ -39,6 +39,20 @@ namespace dp {
   class D3D11Device;
   class FileParser;
 
+  struct DecodedTexture {
+    DecodedTexture(ID3D11Texture2D* texture, UINT index);
+    ~DecodedTexture();
+
+    DecodedTexture(const DecodedTexture&) = delete;
+    DecodedTexture(DecodedTexture&&) = delete;
+
+    DecodedTexture& operator=(const DecodedTexture&) = delete;
+    DecodedTexture& operator=(DecodedTexture&&) = delete;
+
+    ID3D11Texture2D* texture;
+    UINT index;
+  };
+
   class D3D11Decoder {
   public:
     D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize);
@@ -50,8 +64,9 @@ namespace dp {
     D3D11Decoder& operator=(const D3D11Decoder&) = delete;
     D3D11Decoder& operator=(D3D11Decoder&&) = delete;
 
-    ID3D11Texture2D* decodeSlice(FileParser& parser);
+    DecodedTexture decodeSlice(FileParser& parser);
 
+    SizeI getPictureSize() const;
     ID3D11VideoDevice& getVideoDevice();
     ID3D11VideoContext& getVideoContext();
 

@@ -228,7 +228,7 @@ namespace dp {
     textureDesc.ArraySize = 1;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.SampleDesc.Quality = 0;
-    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+    textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
 
     m_textureBGRA = nullptr;
     hRes = device.CreateTexture2D(
@@ -294,18 +294,18 @@ namespace dp {
     deviceContext.ClearRenderTargetView(m_renderView, color);
   }
 
-  void Window::render(ID3D11Texture2D* decodedTexture) {
+  void Window::render(const DecodedTexture& decodedTexture) {
     // Create video processor input view
     D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC inputViewDesc;
     ZeroMemory(&inputViewDesc, sizeof(D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC));
     inputViewDesc.FourCC = 0;
     inputViewDesc.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
     inputViewDesc.Texture2D.MipSlice = 0;
-    inputViewDesc.Texture2D.ArraySlice = 0;
+    inputViewDesc.Texture2D.ArraySlice = decodedTexture.index;
 
     ID3D11VideoProcessorInputView* inputView = nullptr;
     auto& videoDevice = m_d3d11Decoder.getVideoDevice();
-    HRESULT hRes = videoDevice.CreateVideoProcessorInputView(decodedTexture, m_videoProcessorEnumerator, &inputViewDesc, &inputView);
+    HRESULT hRes = videoDevice.CreateVideoProcessorInputView(decodedTexture.texture, m_videoProcessorEnumerator, &inputViewDesc, &inputView);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to create a video processor input view");
     }
@@ -323,15 +323,16 @@ namespace dp {
     streamData.ppPastSurfacesRight = nullptr;
     streamData.ppFutureSurfacesRight = nullptr;
 
+    // Process the Decoder input
     auto& videoContext = m_d3d11Decoder.getVideoContext();
-    hRes = videoContext.VideoProcessorBlt(m_videoProcessor,m_outputView, 0, 1, &streamData);
+    hRes = videoContext.VideoProcessorBlt(m_videoProcessor, m_outputView, 0, 1, &streamData);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to process the frame");
     }
 
-    decodedTexture->Release();
     inputView->Release();
 
+    // Render the VideoProcessor output
     ID3D11Texture2D* backBuffer = nullptr;
     hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
     if (FAILED(hRes)) {
