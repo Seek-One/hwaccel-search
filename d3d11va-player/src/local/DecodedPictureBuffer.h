@@ -35,6 +35,8 @@ namespace dp {
     int BottomFieldOrderCnt;
   };
 
+  constexpr int DecodedBufferLimit = 16;
+
   class DecodedPictureBuffer {
   public:
     DecodedPictureBuffer() = default;

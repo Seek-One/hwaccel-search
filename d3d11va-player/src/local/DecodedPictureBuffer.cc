@@ -25,7 +25,7 @@ namespace dp {
   void DecodedPictureBuffer::addRefFrame(const DXVA_PicEntry_H264& dxvaEntry, int FrameNum, int TopFieldOrderCnt, int BottomFieldOrderCnt) {
     m_dpb.push_front({ dxvaEntry, FrameNum, TopFieldOrderCnt, BottomFieldOrderCnt });
 
-    if (m_dpb.size() > 16) {
+    if (m_dpb.size() > DecodedBufferLimit) {
       m_dpb.pop_back();
     }
   }

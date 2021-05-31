@@ -137,7 +137,7 @@ namespace dp {
     textureDesc.Width = decoderDesc.SampleWidth;
     textureDesc.Height = decoderDesc.SampleHeight;
     textureDesc.Format = DXGI_FORMAT_NV12;
-    textureDesc.ArraySize = 25; // TODO: which value?
+    textureDesc.ArraySize = DecodedBufferLimit;
     textureDesc.MipLevels = 1;
     textureDesc.SampleDesc.Count = 1;
     textureDesc.SampleDesc.Quality = 0;
@@ -236,82 +236,6 @@ namespace dp {
       m_dpb.addRefFrame(picParams.CurrPic, picParams.frame_num, picParams.CurrFieldOrderCnt[0], picParams.CurrFieldOrderCnt[1]);
     }
 
-    // Create a temporary texture -- move to member variable?
-    // D3D11_TEXTURE2D_DESC gpuTextureDesc;
-    // m_texture->GetDesc(&gpuTextureDesc);
-
-    // D3D11_TEXTURE2D_DESC cpuTextureDesc;
-    // cpuTextureDesc.Width = gpuTextureDesc.Width;
-    // cpuTextureDesc.Height = gpuTextureDesc.Height;
-    // cpuTextureDesc.MipLevels = gpuTextureDesc.MipLevels;
-    // cpuTextureDesc.ArraySize = 1; // We copy only the current texture
-    // cpuTextureDesc.Format = gpuTextureDesc.Format;
-    // cpuTextureDesc.SampleDesc = gpuTextureDesc.SampleDesc;
-    // cpuTextureDesc.Usage = D3D11_USAGE_STAGING;
-    // cpuTextureDesc.BindFlags = 0;
-    // cpuTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    // cpuTextureDesc.MiscFlags = 0;
-
-    // ID3D11Texture2D* cpuTexture = nullptr;
-    // hRes = m_d3d11Device.getDevice().CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
-    // if (FAILED(hRes)) {
-    //   throw std::runtime_error("[D3D11Decoder] Unable to create CPU ID3D11Texture2D");
-    // }
-
-    // // copy the texture to a staging resource
-    // m_d3d11Device.getDeviceContext().CopySubresourceRegion(
-    //   cpuTexture,
-    //   0,
-    //   0,
-    //   0,
-    //   0,
-    //   m_texture,
-    //   0,
-    //   nullptr
-    // );
-
-    // // Map the staging resource
-    // D3D11_MAPPED_SUBRESOURCE mapInfo;
-    // hRes = m_d3d11Device.getDeviceContext().Map(
-    //   cpuTexture,
-    //   0,
-    //   D3D11_MAP_READ,
-    //   0,
-    //   &mapInfo
-    // );
-    // if (FAILED(hRes)) {
-    //   throw std::runtime_error("[D3D11Decoder] Unable to map cpu texture");
-    // }
-
-    // uint8_t* yuvData = static_cast<uint8_t*>(mapInfo.pData);
-
-    // auto file = std::fstream("dump.yuv", std::ios::out | std::ios::app | std::ios::binary);
-
-    // // Copy luma
-    // SizeI pictureSize = parser.getRealPictureSize();
-    // for (int h = 0; h < pictureSize.height; ++h) {
-    //   assert(yuvData < ((static_cast<uint8_t*>(mapInfo.pData) + mapInfo.DepthPitch) - mapInfo.RowPitch));
-    //   file.write(reinterpret_cast<const char*>(yuvData), pictureSize.width);
-    //   yuvData += mapInfo.RowPitch;
-    // }
-
-    // // Skip cropped rows
-    // SizeI rawPictureSize = parser.getRawPictureSize();
-    // int skipCount = rawPictureSize.height - pictureSize.height;
-    // yuvData += mapInfo.RowPitch * skipCount;
-
-    // // Copy color
-    // for (int h = 0; h < (pictureSize.height / 2); ++h) {
-    //   assert(yuvData < (((uint8_t*)mapInfo.pData + mapInfo.DepthPitch) - mapInfo.RowPitch));
-    //   file.write((char*)yuvData, pictureSize.width);
-    //   yuvData += mapInfo.RowPitch;
-    // }
-
-    // file.close();
-
-    // cpuTexture->Release();
-    // std::cout << "[D3D11Decoder] Dump YUV" << std::endl;
-
     // Copy the texture for the filtering
     D3D11_TEXTURE2D_DESC copyTextureDesc;
     m_texture->GetDesc(&copyTextureDesc);
@@ -333,7 +257,7 @@ namespace dp {
       0,
       0,
       m_texture,
-      0,
+      m_currentSurfaceIndex,
       nullptr
     );
 
@@ -368,7 +292,8 @@ namespace dp {
     picParams.wFrameHeightInMbsMinus1 = static_cast<USHORT>(sizeInMbs.height - 1);
     picParams.num_ref_frames = static_cast<UCHAR>(sps.num_ref_frames);
 
-    picParams.CurrPic.bPicEntry = 0; // TODO: iterate over surfaces
+    picParams.CurrPic.Index7Bits = static_cast<UCHAR>(m_currentSurfaceIndex);
+    picParams.CurrPic.AssociatedFlag = 0; // Allways 0 since we work with progressive picture
     picParams.field_pic_flag = slice.field_pic_flag;
     if (picParams.field_pic_flag) {
       picParams.CurrPic.AssociatedFlag = slice.bottom_field_flag;
