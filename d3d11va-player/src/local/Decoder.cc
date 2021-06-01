@@ -19,193 +19,25 @@
  * SOFTWARE.
  */
 
-#include "D3D11Decoder.h"
+#include "Decoder.h"
 
 #include <fstream>
 #include <iostream>
 #include <cmath>
 #include <stdexcept>
 
-// For some unkown reasons, the D3D11_DECODER_PROFILE_H264_VLD_NOFGT its not found,
-// so I need to redeclare the constant and add initguid.h header file
-#include <initguid.h>
-DEFINE_GUID(D3D11_DECODER_PROFILE_H264_VLD_NOFGT,    0x1b81be68, 0xa0c7,0x11d3,0xb9,0x84,0x00,0xc0,0x4f,0x2e,0x73,0xc5);
-
-#include "D3D11Device.h"
 #include "FileParser.h"
 
-namespace {
-  constexpr int alignedSize(int size, int nbPixels) {
-    return (size + nbPixels - 1) & ~(nbPixels - 1);
-  }
-}
-
 namespace dp {
-  DecodedTexture::DecodedTexture(ID3D11Texture2D* t, UINT i)
-  : texture(t)
-  , index(i) {
-    if (texture == nullptr) {
-      throw std::runtime_error("[DecodedTexture] The texture must be defined");
-    }
-    texture->AddRef();
+  Decoder::Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize)
+  : m_d3d11Manager(d3d11Manager)
+  , m_videoDecoder(d3d11Manager.createVideoDecoder(rawPictureSize))
+  , m_videoTexture(d3d11Manager.createVideoTexture(m_videoDecoder, DecodedBufferLimit))
+  , m_currentReportID(1) {
+
   }
 
-  DecodedTexture::~DecodedTexture() {
-    texture->Release();
-  }
-
-  D3D11Decoder::D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize)
-  : m_d3d11Device(d3d11Device)
-  , m_videoDevice(nullptr)
-  , m_videoContext(nullptr)
-  , m_videoDecoder(nullptr)
-  , m_texture(nullptr)
-  , m_currentReportID(1)
-  , m_currentSurfaceIndex(0) {
-    // Get the D3D11VA video device
-    auto& device = m_d3d11Device.getDevice();
-    HRESULT hRes = device.QueryInterface(&m_videoDevice);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to get ID3D11VideoDevice");
-    }
-
-    // Get the D3D11VA video context
-    auto& deviceContext = m_d3d11Device.getDeviceContext();
-    hRes = deviceContext.QueryInterface(&m_videoContext);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to get ID3D11VideoContext");
-    }
-
-    // Try to get a H264 decoder profile
-    const GUID h264DecoderProfile = D3D11_DECODER_PROFILE_H264_VLD_NOFGT;
-
-    bool profileFound = false;
-    UINT profileCount = m_videoDevice->GetVideoDecoderProfileCount();
-    for (UINT i = 0; i < profileCount; ++i) {
-      GUID selectedProfileGUID;
-      hRes = m_videoDevice->GetVideoDecoderProfile(i, &selectedProfileGUID);
-      if (FAILED(hRes)) {
-        throw std::runtime_error("[D3D11Decoder] Invalid profile selected");
-      }
-
-      if (h264DecoderProfile == selectedProfileGUID) {
-        profileFound = true;
-        break;
-      }
-    }
-
-    if (!profileFound) {
-      throw std::runtime_error("[D3D11Decoder] No hardware profile found");
-    }
-
-    // Check support for NV12
-    BOOL supportedFormat;
-    hRes = m_videoDevice->CheckVideoDecoderFormat(&h264DecoderProfile, DXGI_FORMAT_NV12, &supportedFormat);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unsupported output format");
-    }
-
-    // Align size to 16 bytes
-    SizeI alignedPictureSize;
-    alignedPictureSize.width = alignedSize(rawPictureSize.width, 16);
-    alignedPictureSize.height = alignedSize(rawPictureSize.height, 16);
-
-    // Select decoder configuration
-    UINT iDecoderConfigCount = 0;
-
-    D3D11_VIDEO_DECODER_DESC decoderDesc;
-    decoderDesc.Guid = h264DecoderProfile;
-    decoderDesc.SampleWidth = alignedPictureSize.width;
-    decoderDesc.SampleHeight = alignedPictureSize.height;
-    decoderDesc.OutputFormat = DXGI_FORMAT_NV12;
-
-    hRes = m_videoDevice->GetVideoDecoderConfigCount(&decoderDesc, &iDecoderConfigCount);
-    if (FAILED(hRes) || iDecoderConfigCount == 0) {
-      throw std::runtime_error("[D3D11Decoder] Unable to get the decoder configurations");
-    }
-
-    // Select a decoder profile with ConfigBitstreamRaw != 0
-    // TODO: we need to prefer no crypt buffer and ConfigBitstreamRaw == 2
-    D3D11_VIDEO_DECODER_CONFIG decoderConfig;
-    bool configFound = false;
-    for (UINT i = 0; i < iDecoderConfigCount; ++i) {
-      hRes = m_videoDevice->GetVideoDecoderConfig(&decoderDesc, i, &decoderConfig);
-      if (FAILED(hRes)) {
-        throw std::runtime_error("[D3D11Decoder] Invalid configuration index provided");
-      }
-
-      if (/*conf.ConfigBitstreamRaw == 1 || */decoderConfig.ConfigBitstreamRaw == 2) {
-        configFound = true;
-        break;
-      }
-    }
-
-    hRes = m_videoDevice->CreateVideoDecoder(&decoderDesc, &decoderConfig, &m_videoDecoder);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11VideoDecoder");
-    }
-
-    // Create output surfaces
-    D3D11_TEXTURE2D_DESC textureDesc;
-    textureDesc.Width = decoderDesc.SampleWidth;
-    textureDesc.Height = decoderDesc.SampleHeight;
-    textureDesc.Format = DXGI_FORMAT_NV12;
-    textureDesc.ArraySize = DecodedBufferLimit;
-    textureDesc.MipLevels = 1;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.SampleDesc.Quality = 0;
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-    textureDesc.BindFlags = D3D11_BIND_DECODER;
-    textureDesc.CPUAccessFlags = 0;
-    textureDesc.MiscFlags = 0;
-
-    hRes = device.CreateTexture2D(&textureDesc, nullptr, &m_texture);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11Texture2D");
-    }
-
-    for (UINT i = 0; i < textureDesc.ArraySize; ++i) {
-      ID3D11VideoDecoderOutputView* outputView = nullptr;
-      D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC viewDesc;
-      viewDesc.DecodeProfile = h264DecoderProfile;
-      viewDesc.Texture2D.ArraySlice = i;
-      viewDesc.ViewDimension = D3D11_VDOV_DIMENSION_TEXTURE2D;
-
-      hRes = m_videoDevice->CreateVideoDecoderOutputView(
-        static_cast<ID3D11Resource*>(m_texture),
-        &viewDesc,
-        static_cast<ID3D11VideoDecoderOutputView**>(&outputView)
-      );
-      if (FAILED(hRes)) {
-        throw std::runtime_error("[D3D11Decoder] Unable to create ID3D11VideoDecoderOutputView");
-      }
-
-      m_outputViews.push_back(outputView);
-      m_texture->AddRef();
-    }
-  }
-
-  D3D11Decoder::~D3D11Decoder() {
-    for (auto outputView: m_outputViews) {
-      outputView->Release();
-      m_texture->Release();
-    }
-    m_texture->Release();
-
-    m_videoDecoder->Release();
-
-    m_videoContext->Release();
-    m_videoDevice->Release();
-  }
-
-  DecodedTexture D3D11Decoder::decodeSlice(FileParser& parser) {
-    D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
-    // To send a slice to the decoder, we need to fill and send 4 buffers :
-    // - D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS
-    // - D3D11_VIDEO_DECODER_BUFFER_INVERSE_QUANTIZATION_MATRIX
-    // - D3D11_VIDEO_DECODER_BUFFER_BITSTREAM
-    // - D3D11_VIDEO_DECODER_BUFFER_SLICE_CONTROL
-
+  const VideoTexture& Decoder::decodeSlice(FileParser& parser) {
     const auto& nal = *(parser.getStream().nal);
 
     // Reset the decoded picture buffer when a IDR frame arrives
@@ -213,10 +45,21 @@ namespace dp {
       startNewIDRFrame();
     }
 
+    // Get the next output view
+    m_videoTexture.nextSurfaceIndex();
+    auto outputView = m_videoTexture.getCurrentOutputView();
+
+    // To send a slice to the decoder, we need to fill and send 4 buffers :
+    // - D3D11_VIDEO_DECODER_BUFFER_PICTURE_PARAMETERS
+    // - D3D11_VIDEO_DECODER_BUFFER_INVERSE_QUANTIZATION_MATRIX
+    // - D3D11_VIDEO_DECODER_BUFFER_BITSTREAM
+    // - D3D11_VIDEO_DECODER_BUFFER_SLICE_CONTROL
+    D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
+
     // Start the frame (lock directx surface)
-    HRESULT hRes = m_videoContext->DecoderBeginFrame(m_videoDecoder, m_outputViews[m_currentSurfaceIndex], 0, nullptr);
+    HRESULT hRes = m_d3d11Manager.getVideoContext()->DecoderBeginFrame(m_videoDecoder.Get(), outputView.Get(), 0, nullptr);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to begin the frame");
+      throw std::runtime_error("[Decoder] Unable to begin the frame");
     }
 
     // Fill and send PicParams
@@ -233,15 +76,15 @@ namespace dp {
     std::vector<DXVA_Slice_H264_Short> listSliceControl;
     sendBistreamAndSliceControl(parser.getCurrentNAL(), listBufferDesc[2], listBufferDesc[3], listSliceControl, parser);
 
-    hRes = m_videoContext->SubmitDecoderBuffers(m_videoDecoder, 4, listBufferDesc);
+    hRes = m_d3d11Manager.getVideoContext()->SubmitDecoderBuffers(m_videoDecoder.Get(), 4, listBufferDesc);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to submit decoder buffers");
+      throw std::runtime_error("[Decoder] Unable to submit decoder buffers");
     }
 
     // Release the frame to finalize the decode
-    hRes = m_videoContext->DecoderEndFrame(m_videoDecoder);
+    hRes = m_d3d11Manager.getVideoContext()->DecoderEndFrame(m_videoDecoder.Get());
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to end the frame");
+      throw std::runtime_error("[Decoder] Unable to end the frame");
     }
 
     // Add the new decoded frame to the DPB
@@ -249,29 +92,10 @@ namespace dp {
       m_dpb.addRefFrame(picParams.CurrPic, picParams.frame_num, picParams.CurrFieldOrderCnt[0], picParams.CurrFieldOrderCnt[1]);
     }
 
-    // Select the new surface index
-    UINT oldIndex = m_currentSurfaceIndex;
-    m_currentSurfaceIndex = getNextAvailableSurfaceIndex();
-
-    return DecodedTexture(m_texture, oldIndex);
+    return m_videoTexture;
   }
 
-  SizeI D3D11Decoder::getPictureSize() const {
-    D3D11_TEXTURE2D_DESC desc;
-    m_texture->GetDesc(&desc);
-
-    return SizeI(desc.Width, desc.Height);
-  }
-
-  ID3D11VideoDevice& D3D11Decoder::getVideoDevice() {
-    return *m_videoDevice;
-  }
-
-  ID3D11VideoContext& D3D11Decoder::getVideoContext() {
-    return *m_videoContext;
-  }
-
-  void D3D11Decoder::fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser) {
+  void Decoder::fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser) {
     const h264_stream_t& stream = parser.getStream();
     const nal_t& nal = *stream.nal;
     const sps_t& sps = *stream.sps;
@@ -288,7 +112,7 @@ namespace dp {
     picParams.wFrameHeightInMbsMinus1 = static_cast<USHORT>(sizeInMbs.height - 1);
     picParams.num_ref_frames = static_cast<UCHAR>(sps.num_ref_frames);
 
-    picParams.CurrPic.Index7Bits = static_cast<UCHAR>(m_currentSurfaceIndex);
+    picParams.CurrPic.Index7Bits = static_cast<UCHAR>(m_videoTexture.getCurrentSurfaceIndex());
     picParams.CurrPic.AssociatedFlag = 0; // Allways 0 since we work with progressive picture
     picParams.field_pic_flag = slice.field_pic_flag;
     if (picParams.field_pic_flag) {
@@ -377,7 +201,7 @@ namespace dp {
     }
   }
 
-  void D3D11Decoder::fillScalingLists(DXVA_Qmatrix_H264& scalingLists, [[maybe_unused]] const FileParser& parser) {
+  void Decoder::fillScalingLists(DXVA_Qmatrix_H264& scalingLists, [[maybe_unused]] const FileParser& parser) {
     // const h264_stream_t& stream = parser.getStream();
     // const pps_t& pps = *stream.pps;
 
@@ -394,7 +218,7 @@ namespace dp {
     }
   }
 
-  void D3D11Decoder::sendBistreamAndSliceControl(
+  void Decoder::sendBistreamAndSliceControl(
     const std::vector<uint8_t>& bitstream,
     D3D11_VIDEO_DECODER_BUFFER_DESC& bitstreamBufferDesc,
     D3D11_VIDEO_DECODER_BUFFER_DESC& sliceControlBufferDesc,
@@ -406,15 +230,15 @@ namespace dp {
     UINT D3D11VABufferSize = 0;
 
     // Get the decoder buffer
-    hRes = m_videoContext->GetDecoderBuffer(m_videoDecoder, D3D11_VIDEO_DECODER_BUFFER_BITSTREAM, &D3D11VABufferSize, (void**)(&D3D11VABuffer));
+    hRes = m_d3d11Manager.getVideoContext()->GetDecoderBuffer(m_videoDecoder.Get(), D3D11_VIDEO_DECODER_BUFFER_BITSTREAM, &D3D11VABufferSize, (void**)(&D3D11VABuffer));
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to get a decoder buffer");
+      throw std::runtime_error("[Decoder] Unable to get a decoder buffer");
     }
 
     // In fact, a same picture may be splitted into multiple NAL. In this version, we not handle this case and we send
     // only slice by slice
     if (D3D11VABufferSize < bitstream.size()) {
-      throw std::runtime_error("[D3D11Decoder] the D3D11 VA buffer is too small");
+      throw std::runtime_error("[Decoder] the D3D11 VA buffer is too small");
     }
 
     // Copy bitstream data
@@ -425,9 +249,9 @@ namespace dp {
     std::memset(D3D11VABuffer + bitstream.size(), 0, paddingLength);
 
     // Release the bitstream buffer
-    hRes = m_videoContext->ReleaseDecoderBuffer(m_videoDecoder, D3D11_VIDEO_DECODER_BUFFER_BITSTREAM);
+    hRes = m_d3d11Manager.getVideoContext()->ReleaseDecoderBuffer(m_videoDecoder.Get(), D3D11_VIDEO_DECODER_BUFFER_BITSTREAM);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Decoder] Unable to release a decoder buffer");
+      throw std::runtime_error("[Decoder] Unable to release a decoder buffer");
     }
 
     // Count the total of macroblock
@@ -457,15 +281,7 @@ namespace dp {
     );
   }
 
-  unsigned D3D11Decoder::getNextAvailableSurfaceIndex() const {
-    D3D11_TEXTURE2D_DESC textureDesc;
-    m_texture->GetDesc(&textureDesc);
-
-    return (m_currentSurfaceIndex + 1) % textureDesc.ArraySize;
-  }
-
-  void D3D11Decoder::startNewIDRFrame() {
+  void Decoder::startNewIDRFrame() {
     m_dpb.clear();
-    m_currentSurfaceIndex = 0;
   }
 }

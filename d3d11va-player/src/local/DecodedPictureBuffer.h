@@ -22,7 +22,8 @@
 #ifndef LOCAL_DECODED_PICTURE_BUFFER_H_
 #define LOCAL_DECODED_PICTURE_BUFFER_H_
 
-#include <windows.h>
+#include "WindowsHeaders.h"
+
 #include <dxva.h>
 
 #include <deque>

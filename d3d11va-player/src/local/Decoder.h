@@ -19,61 +19,37 @@
  * SOFTWARE.
  */
 
-#ifndef LOCAL_D3D11_DECODER_H
-#define LOCAL_D3D11_DECODER_H
+#ifndef LOCAL_DECODER_H
+#define LOCAL_DECODER_H
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <WinSDKVer.h>
-#include <windows.h>
+#include "D3D11Manager.h" // Must be included in first
 
-#include <d3d11.h>
 #include <dxva.h>
-
-#include <vector>
 
 #include "DecodedPictureBuffer.h"
 #include "Size.h"
+#include "VideoTexture.h"
 
 namespace dp {
-  class D3D11Device;
   class FileParser;
 
-  struct DecodedTexture {
-    DecodedTexture(ID3D11Texture2D* texture, UINT index);
-    ~DecodedTexture();
-
-    DecodedTexture(const DecodedTexture&) = delete;
-    DecodedTexture(DecodedTexture&&) = delete;
-
-    DecodedTexture& operator=(const DecodedTexture&) = delete;
-    DecodedTexture& operator=(DecodedTexture&&) = delete;
-
-    ID3D11Texture2D* texture;
-    UINT index;
-  };
-
-  class D3D11Decoder {
+  class Decoder {
   public:
-    D3D11Decoder(D3D11Device& d3d11Device, const SizeI rawPictureSize);
-    ~D3D11Decoder();
+    Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize);
+    ~Decoder() = default;
 
-    D3D11Decoder(const D3D11Decoder&) = delete;
-    D3D11Decoder(D3D11Decoder&&) = delete;
+    Decoder(const Decoder&) = delete;
+    Decoder(Decoder&&) = delete;
 
-    D3D11Decoder& operator=(const D3D11Decoder&) = delete;
-    D3D11Decoder& operator=(D3D11Decoder&&) = delete;
+    Decoder& operator=(const Decoder&) = delete;
+    Decoder& operator=(Decoder&&) = delete;
 
-    DecodedTexture decodeSlice(FileParser& parser);
-
-    SizeI getPictureSize() const;
-    ID3D11VideoDevice& getVideoDevice();
-    ID3D11VideoContext& getVideoContext();
+    const VideoTexture& decodeSlice(FileParser& parser);
 
   private:
     void fillPictureParams(DXVA_PicParams_H264& picParams, FileParser& parser);
     void fillScalingLists(DXVA_Qmatrix_H264& scalingLists, const FileParser& parser);
-    void D3D11Decoder::sendBistreamAndSliceControl(
+    void Decoder::sendBistreamAndSliceControl(
       const std::vector<uint8_t>& bitstream,
       D3D11_VIDEO_DECODER_BUFFER_DESC& bitstreamBufferDesc,
       D3D11_VIDEO_DECODER_BUFFER_DESC& sliceControlBufferDesc,
@@ -87,24 +63,24 @@ namespace dp {
       void *D3D11VABuffer = NULL;
       UINT D3D11VABufferSize = 0;
 
-      hRes = m_videoContext->GetDecoderBuffer(m_videoDecoder, bufferType, &D3D11VABufferSize, &D3D11VABuffer);
+      hRes = m_d3d11Manager.getVideoContext()->GetDecoderBuffer(m_videoDecoder.Get(), bufferType, &D3D11VABufferSize, &D3D11VABuffer);
       if (FAILED(hRes)) {
-        throw std::runtime_error("[D3D11Decoder] Unable to get a decoder buffer");
+        throw std::runtime_error("[Decoder] Unable to get a decoder buffer");
       }
 
       if (D3D11VABufferSize < (UINT)bufferSize) {
-        throw std::runtime_error("[D3D11Decoder] The D3D11 VA buffer is too small");
+        throw std::runtime_error("[Decoder] The D3D11 VA buffer is too small");
       }
 
       std::memcpy(D3D11VABuffer, buffer, bufferSize);
-      memset(&bufferDesc, 0, sizeof(D3D11_VIDEO_DECODER_BUFFER_DESC));
+      std::memset(&bufferDesc, 0, sizeof(D3D11_VIDEO_DECODER_BUFFER_DESC));
       bufferDesc.BufferType = bufferType;
       bufferDesc.DataSize = bufferSize;
       bufferDesc.NumMBsInBuffer = MBCount;
 
-      hRes = m_videoContext->ReleaseDecoderBuffer(m_videoDecoder, bufferType);
+      hRes = m_d3d11Manager.getVideoContext()->ReleaseDecoderBuffer(m_videoDecoder.Get(), bufferType);
       if (FAILED(hRes)) {
-        throw std::runtime_error("[D3D11Decoder] Unable to release a decoder buffer");
+        throw std::runtime_error("[Decoder] Unable to release a decoder buffer");
       }
     }
 
@@ -112,16 +88,13 @@ namespace dp {
     void startNewIDRFrame();
 
   private:
-    D3D11Device& m_d3d11Device;
-    ID3D11VideoDevice* m_videoDevice;
-    ID3D11VideoContext* m_videoContext;
-    ID3D11VideoDecoder* m_videoDecoder;
-    ID3D11Texture2D* m_texture;
-    std::vector<ID3D11VideoDecoderOutputView*> m_outputViews;
+    D3D11Manager& m_d3d11Manager;
+    ComPtr<ID3D11VideoDecoder> m_videoDecoder;
+    VideoTexture m_videoTexture;
     unsigned m_currentReportID;
-    unsigned m_currentSurfaceIndex;
+
     DecodedPictureBuffer m_dpb;
   };
 }
 
-#endif // LOCAL_D3D11_DECODER_H
+#endif // LOCAL_DECODER_H

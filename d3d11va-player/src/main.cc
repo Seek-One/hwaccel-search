@@ -25,8 +25,8 @@
 
 #include <iostream>
 
-#include "local/D3D11Decoder.h"
-#include "local/D3D11Device.h"
+#include "local/Decoder.h"
+#include "local/D3D11Manager.h"
 #include "local/FileParser.h"
 #include "local/Window.h"
 
@@ -45,9 +45,9 @@ int main(int argc, char* argv[]) {
   fileParser.extractPictureSizes();
   auto rawPictureSize = fileParser.getRawPictureSize();
 
-  dp::D3D11Device device;
-  dp::D3D11Decoder decoder(device, rawPictureSize);
-  dp::Window window(device, decoder);
+  dp::D3D11Manager manager;
+  dp::Decoder decoder(manager, rawPictureSize);
+  dp::Window window(manager);
 
   while (window.isActive()) {
     window.procMessage();
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 
     window.clear();
 
-    auto decodedTexture = decoder.decodeSlice(fileParser);
+    const auto& decodedTexture = decoder.decodeSlice(fileParser);
 
     window.render(decodedTexture);
   }

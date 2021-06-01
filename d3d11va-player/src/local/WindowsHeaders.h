@@ -19,38 +19,12 @@
  * SOFTWARE.
  */
 
-#ifndef LOCAL_D3D11_DEVICE_H_
-#define LOCAL_D3D11_DEVICE_H_
+#ifndef LOCAL_WINDOWS_HEADERS_H_
+#define LOCAL_WINDOWS_HEADERS_H_
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <WinSDKVer.h>
 #include <windows.h>
 
-#include <d3d11.h>
-
-namespace dp {
-  class D3D11Device {
-  public:
-    D3D11Device();
-    ~D3D11Device();
-
-    D3D11Device(const D3D11Device&) = delete;
-    D3D11Device(D3D11Device&&) = delete;
-
-    D3D11Device& operator=(const D3D11Device&) = delete;
-    D3D11Device& operator=(D3D11Device&&) = delete;
-
-    ID3D11Device& getDevice();
-    const ID3D11Device& getDevice() const;
-
-    ID3D11DeviceContext& getDeviceContext();
-    const ID3D11DeviceContext& getDeviceContext() const;
-
-  private:
-    ID3D11Device* m_device;
-    ID3D11DeviceContext* m_deviceContext;
-  };
-}
-
-#endif // LOCAL_D3D11_DEVICE_H_
+#endif // LOCAL_WINDOWS_HEADERS_H_

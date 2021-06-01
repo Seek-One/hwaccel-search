@@ -19,47 +19,42 @@
  * SOFTWARE.
  */
 
-#ifndef LOCAL_WINDOW_H_
-#define LOCAL_WINDOW_H_
+#ifndef LOCAL_VIDEO_TEXTURE_H_
+#define LOCAL_VIDEO_TEXTURE_H_
 
-#include "D3D11Manager.h" // Must be included in first
+#include "WindowsHeaders.h"
+
+#include <vector>
+
+#include <wrl/client.h>
+
+#include "D3D11Manager.h"
+#include "Size.h"
+
+struct ID3D11Texture2D;
 
 namespace dp {
-  class VideoTexture;
-
-  class Window {
+  class VideoTexture {
   public:
-    Window(D3D11Manager& d3d11Manager);
-    ~Window() = default;
+    VideoTexture(D3D11Manager& d3d11Manager, D3D11_VIDEO_DECODER_DESC decoderDesc, UINT nbSurface);
+    ~VideoTexture() = default;
 
-    Window(const Window&) = delete;
-    Window(Window&&) = delete;
+    ComPtr<ID3D11Texture2D> getTexture() const;
+    ComPtr<ID3D11VideoDecoderOutputView> getCurrentOutputView() const;
+    UINT getCurrentSurfaceIndex() const;
+    void nextSurfaceIndex();
 
-    Window& operator=(const Window&) = delete;
-    Window& operator=(Window&&) = delete;
+    VideoTexture(const VideoTexture&) = delete;
+    VideoTexture(VideoTexture&&) = delete;
 
-    bool isActive() const;
-    void procMessage();
-    void clear();
-    void render(const VideoTexture& decodedTexture);
+    VideoTexture& operator=(const VideoTexture&) = delete;
+    VideoTexture& operator=(VideoTexture&&) = delete;
 
   private:
-    const LPCWSTR m_szTitle;
-    const LPCWSTR m_szWindowClass;
-    bool m_isActive;
-
-    D3D11Manager& m_d3d11Manager;
-
-    // Rendering
-    ComPtr<IDXGISwapChain1> m_swapChain;
-    ComPtr<ID3D11RenderTargetView> m_renderView;
-
-    // Video processing
-    ComPtr<ID3D11VideoProcessorEnumerator> m_videoProcessorEnumerator;
-    ComPtr<ID3D11VideoProcessor> m_videoProcessor;
-    ComPtr<ID3D11Texture2D> m_textureBGRA;
-    ComPtr<ID3D11VideoProcessorOutputView> m_outputView;
+    ComPtr<ID3D11Texture2D> m_texture;
+    std::vector<ComPtr<ID3D11VideoDecoderOutputView>> m_outputViews;
+    UINT m_currentSurface;
   };
 }
 
-#endif // LOCAL_WINDOW_H_
+#endif // LOCAL_VIDEO_TEXTURE_H_

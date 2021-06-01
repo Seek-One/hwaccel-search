@@ -27,11 +27,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include <d3dcompiler.h>
-#include <directxmath.h>
-
-#include "D3D11Decoder.h"
-#include "D3D11Device.h"
+#include "Decoder.h"
+#include "VideoTexture.h"
 
 namespace details {
   LRESULT CALLBACK procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -47,11 +44,8 @@ namespace details {
 }
 
 namespace dp {
-  Window::Window(D3D11Device& d3d11Device, D3D11Decoder& decoder)
-  : m_d3d11Device(d3d11Device)
-  , m_d3d11Decoder(decoder)
-  , m_swapChain(nullptr)
-  , m_renderView(nullptr)
+  Window::Window(D3D11Manager& d3d11Manager)
+  : m_d3d11Manager(d3d11Manager)
   , m_szTitle(L"D3D11VA Player")
   , m_szWindowClass(L"D3D11VAPLAYER")
   , m_isActive(true) {
@@ -100,71 +94,19 @@ namespace dp {
       throw std::runtime_error("[Window] Unable to update the window");
     }
 
-    // Get DXGI instances
-    IDXGIDevice2* dxgiDevice = nullptr;
-    HRESULT hRes = m_d3d11Device.getDevice().QueryInterface(&dxgiDevice);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to get IDXGIDevice2");
-    }
+    m_swapChain = m_d3d11Manager.createSwapChain(hWnd);
 
-    hRes = dxgiDevice->SetMaximumFrameLatency(1);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to set frame latency");
-    }
-
-    IDXGIAdapter* dxgiAdapter = nullptr;
-    hRes = dxgiDevice->GetAdapter(&dxgiAdapter);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to get IDXGIAdapter");
-    }
-
-    IDXGIFactory2* dxgiFactory = nullptr;
-    hRes = dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to get IDXGIFactory2");
-    }
-
-    // Create SwapChain
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {0};
-    swapChainDesc.Stereo = false;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.Scaling = DXGI_SCALING_NONE;
-    swapChainDesc.Flags = 0;
-    // Use automatic sizing.
-    swapChainDesc.Width = 0;
-    swapChainDesc.Height = 0;
-    swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    // Don't use multi-sampling.
-    swapChainDesc.SampleDesc.Count = 1;
-    swapChainDesc.SampleDesc.Quality = 0;
-    swapChainDesc.BufferCount = 2;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-
-    auto& device = m_d3d11Device.getDevice();
-    hRes = dxgiFactory->CreateSwapChainForHwnd(&device, hWnd, &swapChainDesc, nullptr, nullptr, &m_swapChain);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to get IDXGIFactory2");
-    }
-
-    // Release DXGI interfaces
-    dxgiDevice->Release();
-    dxgiAdapter->Release();
-    dxgiFactory->Release();
-
-    ID3D11Texture2D* backBuffer = nullptr;
-    hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    // Get the back buffer
+    ComPtr<ID3D11Texture2D> backBuffer;
+    HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to get backbuffer");
     }
 
-    // Get the render target view
-    hRes = device.CreateRenderTargetView(backBuffer, nullptr, &m_renderView);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a render target view");
-    }
-
-    D3D11_TEXTURE2D_DESC backBufferDesc = {0};
+    // Set the view port
+    D3D11_TEXTURE2D_DESC backBufferDesc;
     backBuffer->GetDesc(&backBufferDesc);
+    SizeI backBufferSize = SizeI(backBufferDesc.Width, backBufferDesc.Height);
 
     D3D11_VIEWPORT viewport;
     viewport.TopLeftX = 0.0f;
@@ -174,31 +116,18 @@ namespace dp {
     viewport.MinDepth = D3D11_MIN_DEPTH;
     viewport.MaxDepth = D3D11_MAX_DEPTH;
 
-    m_d3d11Device.getDeviceContext().RSSetViewports(1, &viewport);
+    m_d3d11Manager.getDeviceContext()->RSSetViewports(1, &viewport);
 
-    backBuffer->Release();
+    // Create the render target view
+    m_renderView = m_d3d11Manager.createRenderTarget(backBuffer);
 
-    // Create a video processor
-    // First, create a video processor enumerator
-    D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
-    ZeroMemory( &ContentDesc, sizeof( ContentDesc ) );
-    ContentDesc.InputFrameFormat = D3D11_VIDEO_FRAME_FORMAT_INTERLACED_TOP_FIELD_FIRST;
-    ContentDesc.InputWidth = 1920;
-    ContentDesc.InputHeight = 1080;
-    ContentDesc.OutputWidth = backBufferDesc.Width;
-    ContentDesc.OutputHeight = backBufferDesc.Height;
-    ContentDesc.Usage = D3D11_VIDEO_USAGE_PLAYBACK_NORMAL;
+    // Create a video processor enumerator
+    m_videoProcessorEnumerator = m_d3d11Manager.createVideoProcessorEnumerator(backBufferSize);
 
-    auto& videoDevice = decoder.getVideoDevice();
-    hRes = videoDevice.CreateVideoProcessorEnumerator(&ContentDesc, &m_videoProcessorEnumerator);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a video processor enumerator");
-    }
-
+    // Check supported format
     UINT uiFlags;
-
     hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
-    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
+    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT)) {
       throw std::runtime_error("[Window] NV12 is not supported as input format");
     }
 
@@ -207,62 +136,17 @@ namespace dp {
       throw std::runtime_error("[Window] BGRA is not supported as output format");
     }
 
-    // TODO: which caps check? index == 0
+    // TODO: which framerate conversion check? For now, just take the first
+    UINT rateConversionIndex = 0;
 
-    // Second effective creation
-    hRes = videoDevice.CreateVideoProcessor(m_videoProcessorEnumerator, 0, &m_videoProcessor);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a video processor");
-    }
+    // Create the video processor
+    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
 
     // Create the output BGRA texture
-    D3D11_TEXTURE2D_DESC textureDesc;
-    ZeroMemory(&textureDesc, sizeof(D3D11_TEXTURE2D_DESC));
-    textureDesc.Width = backBufferDesc.Width;
-    textureDesc.Height = backBufferDesc.Height;
-    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-    textureDesc.CPUAccessFlags = 0;
-    textureDesc.MiscFlags = 0;
-    textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = 1;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.SampleDesc.Quality = 0;
-    textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
-
-    m_textureBGRA = nullptr;
-    hRes = device.CreateTexture2D(
-      &textureDesc,
-      nullptr,
-      &m_textureBGRA
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create BGRA output texture");
-    }
+    m_textureBGRA = m_d3d11Manager.createOutputTexture(backBufferSize);
 
     // Create video processor output view
-    D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC outputViewDesc;
-    ZeroMemory(&outputViewDesc, sizeof(D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC));
-    outputViewDesc.ViewDimension =  D3D11_VPOV_DIMENSION_TEXTURE2D;
-    outputViewDesc.Texture2D.MipSlice = 0;
-    outputViewDesc.Texture2DArray.MipSlice = 0;
-    outputViewDesc.Texture2DArray.FirstArraySlice = 0;
-    outputViewDesc.Texture2DArray.ArraySize = 1;
-
-    m_outputView = nullptr;
-    hRes = videoDevice.CreateVideoProcessorOutputView(m_textureBGRA, m_videoProcessorEnumerator, &outputViewDesc, &m_outputView);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a video processor input view");
-    }
-  }
-
-  Window::~Window() {
-    m_swapChain->Release();
-    m_renderView->Release();
-    m_videoProcessorEnumerator->Release();
-    m_videoProcessor->Release();
-    m_textureBGRA->Release();
-    m_outputView->Release();
+    m_outputView = m_d3d11Manager.createVideoProcessorOutputView(m_videoProcessorEnumerator, m_textureBGRA);
   }
 
   bool Window::isActive() const {
@@ -287,28 +171,20 @@ namespace dp {
   }
 
   void Window::clear() {
-    auto& deviceContext = m_d3d11Device.getDeviceContext();
-    deviceContext.OMSetRenderTargets(1, &m_renderView, nullptr);
+    auto deviceContext = m_d3d11Manager.getDeviceContext();
+    deviceContext->OMSetRenderTargets(1, m_renderView.GetAddressOf(), nullptr);
 
     float color[4] = { 0.071f, 0.04f, 0.561f, 1.0f };
-    deviceContext.ClearRenderTargetView(m_renderView, color);
+    deviceContext->ClearRenderTargetView(m_renderView.Get(), color);
   }
 
-  void Window::render(const DecodedTexture& decodedTexture) {
+  void Window::render(const VideoTexture& decodedTexture) {
     // Create video processor input view
-    D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC inputViewDesc;
-    ZeroMemory(&inputViewDesc, sizeof(D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC));
-    inputViewDesc.FourCC = 0;
-    inputViewDesc.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
-    inputViewDesc.Texture2D.MipSlice = 0;
-    inputViewDesc.Texture2D.ArraySlice = decodedTexture.index;
-
-    ID3D11VideoProcessorInputView* inputView = nullptr;
-    auto& videoDevice = m_d3d11Decoder.getVideoDevice();
-    HRESULT hRes = videoDevice.CreateVideoProcessorInputView(decodedTexture.texture, m_videoProcessorEnumerator, &inputViewDesc, &inputView);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to create a video processor input view");
-    }
+    auto inputView = m_d3d11Manager.createVideoProcessorInputView(
+      m_videoProcessorEnumerator,
+      decodedTexture.getTexture(),
+      decodedTexture.getCurrentSurfaceIndex()
+    );
 
     D3D11_VIDEO_PROCESSOR_STREAM streamData;
     ZeroMemory(&streamData, sizeof(D3D11_VIDEO_PROCESSOR_STREAM));
@@ -319,28 +195,25 @@ namespace dp {
     streamData.FutureFrames = 0;
     streamData.ppPastSurfaces = nullptr;
     streamData.ppFutureSurfaces = nullptr;
-    streamData.pInputSurface = inputView;
+    streamData.pInputSurface = inputView.Get();
     streamData.ppPastSurfacesRight = nullptr;
     streamData.ppFutureSurfacesRight = nullptr;
 
     // Process the Decoder input
-    auto& videoContext = m_d3d11Decoder.getVideoContext();
-    hRes = videoContext.VideoProcessorBlt(m_videoProcessor, m_outputView, 0, 1, &streamData);
+    auto videoContext = m_d3d11Manager.getVideoContext();
+    HRESULT hRes = videoContext->VideoProcessorBlt(m_videoProcessor.Get(), m_outputView.Get(), 0, 1, &streamData);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to process the frame");
     }
 
-    inputView->Release();
-
     // Render the VideoProcessor output
-    ID3D11Texture2D* backBuffer = nullptr;
-    hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    ComPtr<ID3D11Texture2D> backBuffer;
+    hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to get backbuffer");
     }
 
-    m_d3d11Device.getDeviceContext().CopyResource(backBuffer, m_textureBGRA);
-    backBuffer->Release();
+    m_d3d11Manager.getDeviceContext()->CopyResource(backBuffer.Get(), m_textureBGRA.Get());
 
     hRes = m_swapChain->Present(1, 0);
     if (FAILED(hRes)) {
