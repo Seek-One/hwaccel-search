@@ -106,7 +106,7 @@ namespace dp {
     // Set the view port
     D3D11_TEXTURE2D_DESC backBufferDesc;
     backBuffer->GetDesc(&backBufferDesc);
-    SizeI backBufferSize = SizeI(backBufferDesc.Width, backBufferDesc.Height);
+    m_rendererSize = SizeI(backBufferDesc.Width, backBufferDesc.Height);
 
     D3D11_VIEWPORT viewport;
     viewport.TopLeftX = 0.0f;
@@ -120,33 +120,10 @@ namespace dp {
 
     // Create the render target view
     m_renderView = m_d3d11Manager.createRenderTarget(backBuffer);
+  }
 
-    // Create a video processor enumerator
-    m_videoProcessorEnumerator = m_d3d11Manager.createVideoProcessorEnumerator(backBufferSize);
-
-    // Check supported format
-    UINT uiFlags;
-    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
-    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT)) {
-      throw std::runtime_error("[Window] NV12 is not supported as input format");
-    }
-
-    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_B8G8R8A8_UNORM, &uiFlags);
-    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
-      throw std::runtime_error("[Window] BGRA is not supported as output format");
-    }
-
-    // TODO: which framerate conversion check? For now, just take the first
-    UINT rateConversionIndex = 0;
-
-    // Create the video processor
-    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
-
-    // Create the output BGRA texture
-    m_textureBGRA = m_d3d11Manager.createOutputTexture(backBufferSize);
-
-    // Create video processor output view
-    m_outputView = m_d3d11Manager.createVideoProcessorOutputView(m_videoProcessorEnumerator, m_textureBGRA);
+  SizeI Window::getRendererSize() const {
+    return m_rendererSize;
   }
 
   bool Window::isActive() const {
@@ -178,42 +155,15 @@ namespace dp {
     deviceContext->ClearRenderTargetView(m_renderView.Get(), color);
   }
 
-  void Window::render(const VideoTexture& decodedTexture) {
-    // Create video processor input view
-    auto inputView = m_d3d11Manager.createVideoProcessorInputView(
-      m_videoProcessorEnumerator,
-      decodedTexture.getTexture(),
-      decodedTexture.getCurrentSurfaceIndex()
-    );
-
-    D3D11_VIDEO_PROCESSOR_STREAM streamData;
-    ZeroMemory(&streamData, sizeof(D3D11_VIDEO_PROCESSOR_STREAM));
-    streamData.Enable = TRUE;
-    streamData.OutputIndex = 0;
-    streamData.InputFrameOrField = 0;
-    streamData.PastFrames = 0;
-    streamData.FutureFrames = 0;
-    streamData.ppPastSurfaces = nullptr;
-    streamData.ppFutureSurfaces = nullptr;
-    streamData.pInputSurface = inputView.Get();
-    streamData.ppPastSurfacesRight = nullptr;
-    streamData.ppFutureSurfacesRight = nullptr;
-
-    // Process the Decoder input
-    auto videoContext = m_d3d11Manager.getVideoContext();
-    HRESULT hRes = videoContext->VideoProcessorBlt(m_videoProcessor.Get(), m_outputView.Get(), 0, 1, &streamData);
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to process the frame");
-    }
-
+  void Window::render(ComPtr<ID3D11Texture2D> filteredTexture) {
     // Render the VideoProcessor output
     ComPtr<ID3D11Texture2D> backBuffer;
-    hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
+    HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to get backbuffer");
     }
 
-    m_d3d11Manager.getDeviceContext()->CopyResource(backBuffer.Get(), m_textureBGRA.Get());
+    m_d3d11Manager.getDeviceContext()->CopyResource(backBuffer.Get(), filteredTexture.Get());
 
     hRes = m_swapChain->Present(1, 0);
     if (FAILED(hRes)) {

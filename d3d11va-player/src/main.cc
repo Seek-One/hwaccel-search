@@ -25,9 +25,10 @@
 
 #include <iostream>
 
-#include "local/Decoder.h"
 #include "local/D3D11Manager.h"
+#include "local/Decoder.h"
 #include "local/FileParser.h"
+#include "local/Filter.h"
 #include "local/Window.h"
 
 int main(int argc, char* argv[]) {
@@ -48,6 +49,7 @@ int main(int argc, char* argv[]) {
   dp::D3D11Manager manager;
   dp::Decoder decoder(manager, rawPictureSize);
   dp::Window window(manager);
+  dp::Filter filter(manager, window.getRendererSize());
 
   while (window.isActive()) {
     window.procMessage();
@@ -61,8 +63,9 @@ int main(int argc, char* argv[]) {
     window.clear();
 
     const auto& decodedTexture = decoder.decodeSlice(fileParser);
+    auto filteredTexture = filter.process(decodedTexture);
 
-    window.render(decodedTexture);
+    window.render(filteredTexture);
   }
 
   return 0;

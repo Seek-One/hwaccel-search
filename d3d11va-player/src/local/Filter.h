@@ -19,43 +19,33 @@
  * SOFTWARE.
  */
 
-#ifndef LOCAL_WINDOW_H_
-#define LOCAL_WINDOW_H_
+#ifndef LOCAL_FILTER_H_
+#define LOCAL_FILTER_H_
 
-#include "D3D11Manager.h" // Must be included in first
+#include "D3D11Manager.h"
 
 namespace dp {
-  class VideoTexture;
-
-  class Window {
+  class Filter {
   public:
-    Window(D3D11Manager& d3d11Manager);
-    ~Window() = default;
+    Filter(D3D11Manager& d3d11Manager, const SizeI& filteredPictureSize);
+    ~Filter() = default;
 
-    Window(const Window&) = delete;
-    Window(Window&&) = delete;
+    Filter(const Filter&) = delete;
+    Filter(Filter&&) = delete;
 
-    Window& operator=(const Window&) = delete;
-    Window& operator=(Window&&) = delete;
+    Filter& operator=(const Filter&) = delete;
+    Filter& operator=(Filter&&) = delete;
 
-    SizeI getRendererSize() const;
-
-    bool isActive() const;
-    void procMessage();
-    void clear();
-    void render(ComPtr<ID3D11Texture2D> filteredTexture);
+    ComPtr<ID3D11Texture2D> process(const VideoTexture& decodedTexture);
 
   private:
-    const LPCWSTR m_szTitle;
-    const LPCWSTR m_szWindowClass;
-    bool m_isActive;
-    SizeI m_rendererSize;
-
     D3D11Manager& m_d3d11Manager;
 
-    ComPtr<IDXGISwapChain1> m_swapChain;
-    ComPtr<ID3D11RenderTargetView> m_renderView;
+    ComPtr<ID3D11VideoProcessorEnumerator> m_videoProcessorEnumerator;
+    ComPtr<ID3D11VideoProcessor> m_videoProcessor;
+    ComPtr<ID3D11Texture2D> m_textureBGRA;
+    ComPtr<ID3D11VideoProcessorOutputView> m_outputView;
   };
 }
 
-#endif // LOCAL_WINDOW_H_
+#endif // LOCAL_FILTER_H_

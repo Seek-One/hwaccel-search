@@ -27,6 +27,7 @@ add_executable(d3d11va_player_target
     local/Decoder.cc
     local/DecodedPictureBuffer.cc
     local/FileParser.cc
+    local/Filter.cc
     local/VideoTexture.cc
     local/Window.cc
     main.cc
