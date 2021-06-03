@@ -19,50 +19,44 @@
  * SOFTWARE.
  */
 
-#ifndef LOCAL_WINDOW_H_
-#define LOCAL_WINDOW_H_
+#ifndef LOCAL_MESAGE_MANAGER_H_
+#define LOCAL_MESAGE_MANAGER_H_
 
-#include "D3D11Manager.h" // Must be included in first
+#include "WindowsHeaders.h"
+
+#include "Size.h"
 
 namespace dp {
-  class VideoTexture;
+  enum class MessageType {
+    Resize,
+    Quit,
+  };
 
-  class Window {
+  struct Message {
+    MessageType type;
+
+    union {
+      struct {
+        SizeI windowSize;
+      } resize;
+    };
+  };
+
+  constexpr LPCWSTR szWindowClass = L"D3D11VAPLAYER";
+
+  class MessageManager {
   public:
-    Window(D3D11Manager& d3d11Manager);
-    ~Window() = default;
+    MessageManager();
+    ~MessageManager() = default;
 
-    Window(const Window&) = delete;
-    Window(Window&&) = delete;
+    MessageManager(const MessageManager&) = delete;
+    MessageManager(MessageManager&&) = delete;
 
-    Window& operator=(const Window&) = delete;
-    Window& operator=(Window&&) = delete;
+    MessageManager& operator=(const MessageManager&) = delete;
+    MessageManager& operator=(MessageManager&&) = delete;
 
-    SizeI getRendererSize() const;
-    ComPtr<ID3D11Texture2D> getCurrentBackbuffer();
-
-    void resize(const SizeI& newSize);
-    bool isActive() const;
-    void procMessage();
-    void clear();
-    void render();
-
-  private:
-    void setCurrentRenderTargetView();
-    void setViewport();
-
-  private:
-    const LPCWSTR m_szTitle;
-    const LPCWSTR m_szWindowClass;
-    HWND m_hwnd;
-    bool m_isActive;
-    SizeI m_rendererSize;
-
-    D3D11Manager& m_d3d11Manager;
-
-    ComPtr<IDXGISwapChain1> m_swapChain;
-    ComPtr<ID3D11RenderTargetView> m_renderView;
+    bool poolMessage(Message& message);
   };
 }
 
-#endif // LOCAL_WINDOW_H_
+#endif // LOCAL_MESAGE_MANAGER_H_

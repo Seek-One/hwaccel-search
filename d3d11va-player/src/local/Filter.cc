@@ -48,21 +48,18 @@ namespace dp {
 
     // Create the video processor
     m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
-
-    // Create the output BGRA texture
-    m_textureBGRA = m_d3d11Manager.createOutputTexture(filteredPictureSize);
-
-    // Create video processor output view
-    m_outputView = m_d3d11Manager.createVideoProcessorOutputView(m_videoProcessorEnumerator, m_textureBGRA);
   }
 
-  ComPtr<ID3D11Texture2D> Filter::process(const VideoTexture& decodedTexture) {
+  void Filter::process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture) {
     // Create video processor input view
     auto inputView = m_d3d11Manager.createVideoProcessorInputView(
       m_videoProcessorEnumerator,
       decodedTexture.getTexture(),
       decodedTexture.getCurrentSurfaceIndex()
     );
+
+    // Create video processor output view
+    auto outputView = m_d3d11Manager.createVideoProcessorOutputView(m_videoProcessorEnumerator, renderTexture);
 
     D3D11_VIDEO_PROCESSOR_STREAM streamData;
     ZeroMemory(&streamData, sizeof(D3D11_VIDEO_PROCESSOR_STREAM));
@@ -77,14 +74,13 @@ namespace dp {
     streamData.ppPastSurfacesRight = nullptr;
     streamData.ppFutureSurfacesRight = nullptr;
 
+
     // Process the Decoder input
     auto videoContext = m_d3d11Manager.getVideoContext();
-    HRESULT hRes = videoContext->VideoProcessorBlt(m_videoProcessor.Get(), m_outputView.Get(), 0, 1, &streamData);
+    HRESULT hRes = videoContext->VideoProcessorBlt(m_videoProcessor.Get(), outputView.Get(), 0, 1, &streamData);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to process the frame");
     }
-
-    return m_textureBGRA;
   }
 
 }

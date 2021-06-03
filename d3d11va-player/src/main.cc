@@ -21,7 +21,6 @@
 
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "dxgi")
-#pragma comment(lib, "d3dcompiler")
 
 #include <iostream>
 
@@ -38,9 +37,6 @@ int main(int argc, char* argv[]) {
 
     return 1;
   }
-
-  // Remove previous dump file
-  std::filesystem::remove("dump.yuv");
 
   dp::FileParser fileParser(argv[1]);
   fileParser.extractPictureSizes();
@@ -63,9 +59,9 @@ int main(int argc, char* argv[]) {
     window.clear();
 
     const auto& decodedTexture = decoder.decodeSlice(fileParser);
-    auto filteredTexture = filter.process(decodedTexture);
+    filter.process(decodedTexture, window.getCurrentBackbuffer());
 
-    window.render(filteredTexture);
+    window.render();
   }
 
   return 0;

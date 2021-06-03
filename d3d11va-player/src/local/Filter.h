@@ -36,15 +36,13 @@ namespace dp {
     Filter& operator=(const Filter&) = delete;
     Filter& operator=(Filter&&) = delete;
 
-    ComPtr<ID3D11Texture2D> process(const VideoTexture& decodedTexture);
+    void process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture);
 
   private:
     D3D11Manager& m_d3d11Manager;
 
     ComPtr<ID3D11VideoProcessorEnumerator> m_videoProcessorEnumerator;
     ComPtr<ID3D11VideoProcessor> m_videoProcessor;
-    ComPtr<ID3D11Texture2D> m_textureBGRA;
-    ComPtr<ID3D11VideoProcessorOutputView> m_outputView;
   };
 }
 

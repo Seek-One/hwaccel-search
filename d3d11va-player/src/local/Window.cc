@@ -32,7 +32,26 @@
 
 namespace details {
   LRESULT CALLBACK procMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    dp::Window *windowPtr = nullptr;
+    if (message == WM_CREATE) {
+      // Store the pointer to the main window
+      CREATESTRUCT *pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
+      windowPtr = reinterpret_cast<dp::Window*>(pCreate->lpCreateParams);
+      SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)windowPtr);
+    } else {
+      // Get the window pointer form local userdata
+      LONG_PTR ptr = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+      windowPtr = reinterpret_cast<dp::Window*>(ptr);
+    }
+
     switch (message) {
+    case WM_SIZE: {
+      UINT width = LOWORD(lParam);
+      UINT height = HIWORD(lParam);
+      windowPtr->resize(dp::SizeI(width, height));
+      break;
+    }
+
     case WM_DESTROY:
       PostQuitMessage(0);
       break;
@@ -80,8 +99,8 @@ namespace dp {
       0,
       nullptr,
       nullptr,
-      nullptr,
-      nullptr
+      GetModuleHandle(nullptr),
+      this
     );
 
     if (hWnd == nullptr) {
@@ -96,34 +115,39 @@ namespace dp {
 
     m_swapChain = m_d3d11Manager.createSwapChain(hWnd);
 
-    // Get the back buffer
+    // Set viewport
+    setViewport();
+  }
+
+  SizeI Window::getRendererSize() const {
+    return m_rendererSize;
+  }
+
+  ComPtr<ID3D11Texture2D> Window::getCurrentBackbuffer() {
     ComPtr<ID3D11Texture2D> backBuffer;
     HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to get backbuffer");
     }
 
-    // Set the view port
-    D3D11_TEXTURE2D_DESC backBufferDesc;
-    backBuffer->GetDesc(&backBufferDesc);
-    m_rendererSize = SizeI(backBufferDesc.Width, backBufferDesc.Height);
-
-    D3D11_VIEWPORT viewport;
-    viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = 0.0f;
-    viewport.Width = static_cast<FLOAT>(backBufferDesc.Width);
-    viewport.Height = static_cast<FLOAT>(backBufferDesc.Height);
-    viewport.MinDepth = D3D11_MIN_DEPTH;
-    viewport.MaxDepth = D3D11_MAX_DEPTH;
-
-    m_d3d11Manager.getDeviceContext()->RSSetViewports(1, &viewport);
-
-    // Create the render target view
-    m_renderView = m_d3d11Manager.createRenderTarget(backBuffer);
+    return backBuffer;
   }
 
-  SizeI Window::getRendererSize() const {
-    return m_rendererSize;
+  void Window::resize(const SizeI& newSize) {
+    std::cout << "[Window] resize event: " << newSize.width << "x" << newSize.height << std::endl;
+
+    // If the swap chain is created
+    if (m_swapChain.Get() != nullptr) {
+      // We need to release all backbuffer in use
+      m_renderView.Reset();
+
+      HRESULT hRes = m_swapChain->ResizeBuffers(2, newSize.width, newSize.height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+      if (FAILED(hRes)) {
+        throw std::runtime_error("[Window] Unable to resize rhe back buffers");
+      }
+
+      setViewport();
+    }
   }
 
   bool Window::isActive() const {
@@ -148,6 +172,8 @@ namespace dp {
   }
 
   void Window::clear() {
+    setCurrentRenderTargetView();
+
     auto deviceContext = m_d3d11Manager.getDeviceContext();
     deviceContext->OMSetRenderTargets(1, m_renderView.GetAddressOf(), nullptr);
 
@@ -155,19 +181,38 @@ namespace dp {
     deviceContext->ClearRenderTargetView(m_renderView.Get(), color);
   }
 
-  void Window::render(ComPtr<ID3D11Texture2D> filteredTexture) {
-    // Render the VideoProcessor output
-    ComPtr<ID3D11Texture2D> backBuffer;
-    HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to get backbuffer");
-    }
-
-    m_d3d11Manager.getDeviceContext()->CopyResource(backBuffer.Get(), filteredTexture.Get());
-
-    hRes = m_swapChain->Present(1, 0);
+  void Window::render() {
+    HRESULT hRes = m_swapChain->Present(1, 0);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to present the swapchain");
     }
+  }
+
+  void Window::setCurrentRenderTargetView() {
+    // Get current back buffer
+    auto backBuffer = getCurrentBackbuffer();
+
+    // Create the render target view
+    m_renderView = m_d3d11Manager.createRenderTarget(backBuffer);
+  }
+
+  void Window::setViewport() {
+    // Get the back buffer
+    auto backBuffer = getCurrentBackbuffer();
+
+    // Set the view port
+    D3D11_TEXTURE2D_DESC backBufferDesc;
+    backBuffer->GetDesc(&backBufferDesc);
+    m_rendererSize = SizeI(backBufferDesc.Width, backBufferDesc.Height);
+
+    D3D11_VIEWPORT viewport;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    viewport.Width = static_cast<FLOAT>(backBufferDesc.Width);
+    viewport.Height = static_cast<FLOAT>(backBufferDesc.Height);
+    viewport.MinDepth = D3D11_MIN_DEPTH;
+    viewport.MaxDepth = D3D11_MAX_DEPTH;
+
+    m_d3d11Manager.getDeviceContext()->RSSetViewports(1, &viewport);
   }
 }
