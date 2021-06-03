@@ -21,8 +21,10 @@
 
 #include "Filter.h"
 
+#include <iostream>
 #include <stdexcept>
 
+#include "Clock.h"
 #include "VideoTexture.h"
 
 namespace dp {
@@ -51,6 +53,8 @@ namespace dp {
   }
 
   void Filter::process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture) {
+    Clock filterClock;
+
     // Create video processor input view
     auto inputView = m_d3d11Manager.createVideoProcessorInputView(
       m_videoProcessorEnumerator,
@@ -79,8 +83,11 @@ namespace dp {
     auto videoContext = m_d3d11Manager.getVideoContext();
     HRESULT hRes = videoContext->VideoProcessorBlt(m_videoProcessor.Get(), outputView.Get(), 0, 1, &streamData);
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Window] Unable to process the frame");
+      throw std::runtime_error("[Filter] Unable to process the frame");
     }
+
+    auto elapsedTime = filterClock.elapsed();
+    std::cout << "[Filter] Frame resized in " << elapsedTime.count() << "ms" << std::endl;
   }
 
 }

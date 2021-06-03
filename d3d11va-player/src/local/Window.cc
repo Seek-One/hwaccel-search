@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Clock.h"
 #include "Decoder.h"
 #include "VideoTexture.h"
 
@@ -182,10 +183,15 @@ namespace dp {
   }
 
   void Window::render() {
-    HRESULT hRes = m_swapChain->Present(1, 0);
+    Clock renderClock;
+
+    HRESULT hRes = m_swapChain->Present(0, 0);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Window] Unable to present the swapchain");
     }
+
+    auto elapsedTime = renderClock.elapsed();
+    std::cout << "[Filter] Frame rendered in " << elapsedTime.count() << "ms" << std::endl;
   }
 
   void Window::setCurrentRenderTargetView() {

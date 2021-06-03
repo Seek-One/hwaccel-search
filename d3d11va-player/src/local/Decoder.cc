@@ -26,6 +26,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "Clock.h"
 #include "FileParser.h"
 
 namespace dp {
@@ -38,6 +39,7 @@ namespace dp {
   }
 
   const VideoTexture& Decoder::decodeSlice(FileParser& parser) {
+    Clock decodingClock;
     const auto& nal = *(parser.getStream().nal);
 
     // Reset the decoded picture buffer when a IDR frame arrives
@@ -86,6 +88,9 @@ namespace dp {
     if (FAILED(hRes)) {
       throw std::runtime_error("[Decoder] Unable to end the frame");
     }
+
+    auto elapsedTime = decodingClock.elapsed();
+    std::cout << "[Decoder] Slice decoded in " << elapsedTime.count() << "ms" << std::endl;
 
     // Add the new decoded frame to the DPB
     if (nal.nal_ref_idc > 0) {

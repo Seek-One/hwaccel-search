@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include "local/Clock.h"
 #include "local/D3D11Manager.h"
 #include "local/Decoder.h"
 #include "local/FileParser.h"
@@ -56,12 +57,17 @@ int main(int argc, char* argv[]) {
       continue;
     }
 
+    dp::Clock totalProcessClock;
+
     window.clear();
 
     const auto& decodedTexture = decoder.decodeSlice(fileParser);
     filter.process(decodedTexture, window.getCurrentBackbuffer());
 
     window.render();
+
+    auto elapsedTime = totalProcessClock.elapsed();
+    std::cout << "[Main] Total proccessing in " << elapsedTime.count() << "ms" << std::endl;
   }
 
   return 0;
