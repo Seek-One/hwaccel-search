@@ -27,7 +27,7 @@
 namespace dp {
   class Filter {
   public:
-    Filter(D3D11Manager& d3d11Manager, const SizeI& filteredPictureSize);
+    Filter(D3D11Manager& d3d11Manager);
     ~Filter() = default;
 
     Filter(const Filter&) = delete;
@@ -39,10 +39,15 @@ namespace dp {
     void process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture);
 
   private:
+    void createVideoProcessor(const SizeI& inputSize, const SizeI& outputSize);
+
+  private:
     D3D11Manager& m_d3d11Manager;
 
     ComPtr<ID3D11VideoProcessorEnumerator> m_videoProcessorEnumerator;
     ComPtr<ID3D11VideoProcessor> m_videoProcessor;
+
+    SizeI m_currentOutputSize;
   };
 }
 

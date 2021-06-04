@@ -35,6 +35,14 @@ namespace dp {
     : width(w)
     , height(h) {
     }
+
+    bool operator==(const Size<IntegralType> &other) {
+      return width == other.width && height == other.height;
+    }
+
+    bool operator!=(const Size<IntegralType> &other) {
+      return !(*this == other);
+    }
   };
 
   using SizeI = Size<int>;

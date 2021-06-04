@@ -28,31 +28,24 @@
 #include "VideoTexture.h"
 
 namespace dp {
-  Filter::Filter(D3D11Manager& d3d11Manager, const SizeI& filteredPictureSize)
+  Filter::Filter(D3D11Manager& d3d11Manager)
   : m_d3d11Manager(d3d11Manager) {
-    // Create a video processor enumerator
-    m_videoProcessorEnumerator = m_d3d11Manager.createVideoProcessorEnumerator(filteredPictureSize);
 
-    // Check supported format
-    UINT uiFlags;
-    HRESULT hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
-    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT)) {
-      throw std::runtime_error("[Window] NV12 is not supported as input format");
-    }
-
-    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_B8G8R8A8_UNORM, &uiFlags);
-    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
-      throw std::runtime_error("[Window] BGRA is not supported as output format");
-    }
-
-    // TODO: which framerate conversion check? For now, just take the first
-    UINT rateConversionIndex = 0;
-
-    // Create the video processor
-    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
   }
 
   void Filter::process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture) {
+    D3D11_TEXTURE2D_DESC textureDesc;
+    renderTexture->GetDesc(&textureDesc);
+    auto currentOutputSize = SizeI(textureDesc.Width, textureDesc.Height);
+
+    if (m_videoProcessor.Get() == nullptr || m_currentOutputSize != currentOutputSize) {
+      decodedTexture.getTexture()->GetDesc(&textureDesc);
+      auto currentInputSize = SizeI(textureDesc.Width, textureDesc.Height);
+
+      createVideoProcessor(currentInputSize, currentOutputSize);
+      m_currentOutputSize = currentOutputSize;
+    }
+
     Clock filterClock;
 
     // Create video processor input view
@@ -88,6 +81,33 @@ namespace dp {
 
     auto elapsedTime = filterClock.elapsed();
     std::cout << "[Filter] Frame resized in " << elapsedTime.count() << "ms" << std::endl;
+  }
+
+  void Filter::createVideoProcessor(const SizeI& inputSize, const SizeI& outputSize) {
+    // Clear previous one
+    m_videoProcessorEnumerator.Reset();
+    m_videoProcessor.Reset();
+
+    // Create a video processor enumerator
+    m_videoProcessorEnumerator = m_d3d11Manager.createVideoProcessorEnumerator(inputSize, outputSize);
+
+    // Check supported format
+    UINT uiFlags;
+    HRESULT hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
+    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT)) {
+      throw std::runtime_error("[Window] NV12 is not supported as input format");
+    }
+
+    hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_B8G8R8A8_UNORM, &uiFlags);
+    if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
+      throw std::runtime_error("[Window] BGRA is not supported as output format");
+    }
+
+    // TODO: which framerate conversion check? For now, just take the first
+    UINT rateConversionIndex = 0;
+
+    // Create the video processor
+    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
   }
 
 }

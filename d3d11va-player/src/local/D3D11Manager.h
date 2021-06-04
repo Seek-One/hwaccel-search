@@ -61,7 +61,7 @@ namespace dp {
     ComPtr<IDXGISwapChain1> createSwapChain(HWND hWnd);
     ComPtr<ID3D11RenderTargetView> createRenderTarget(ComPtr<ID3D11Texture2D> backBuffer);
 
-    ComPtr<ID3D11VideoProcessorEnumerator> createVideoProcessorEnumerator(SizeI backBufferSize);
+    ComPtr<ID3D11VideoProcessorEnumerator> createVideoProcessorEnumerator(const SizeI& inputSize, const SizeI& outputSize);
     ComPtr<ID3D11VideoProcessor> createVideoProcessor(ComPtr<ID3D11VideoProcessorEnumerator> enumerator, UINT rateConversionIndex);
 
     ComPtr<ID3D11VideoProcessorInputView> createVideoProcessorInputView(

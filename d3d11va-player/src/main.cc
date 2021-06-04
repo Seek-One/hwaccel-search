@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   dp::D3D11Manager manager;
   dp::Decoder decoder(manager, rawPictureSize);
   dp::Window window(manager);
-  dp::Filter filter(manager, window.getRendererSize());
+  dp::Filter filter(manager);
 
   while (window.isActive()) {
     window.procMessage();

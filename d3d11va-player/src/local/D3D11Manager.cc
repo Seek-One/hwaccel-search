@@ -235,16 +235,16 @@ namespace dp {
     return renderView;
   }
 
-  ComPtr<ID3D11VideoProcessorEnumerator> D3D11Manager::createVideoProcessorEnumerator(SizeI backBufferSize) {
+  ComPtr<ID3D11VideoProcessorEnumerator> D3D11Manager::createVideoProcessorEnumerator(const SizeI& inputSize, const SizeI& outputSize) {
     ComPtr<ID3D11VideoProcessorEnumerator> videoProcessorEnumerator;
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC ContentDesc;
     ZeroMemory(&ContentDesc, sizeof(D3D11_VIDEO_PROCESSOR_CONTENT_DESC));
     ContentDesc.InputFrameFormat = D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE;
-    ContentDesc.InputWidth = 4000;
-    ContentDesc.InputHeight = 3000;
-    ContentDesc.OutputWidth = backBufferSize.width;
-    ContentDesc.OutputHeight = backBufferSize.height;
+    ContentDesc.InputWidth = inputSize.width;
+    ContentDesc.InputHeight = inputSize.height;
+    ContentDesc.OutputWidth = outputSize.width;
+    ContentDesc.OutputHeight = outputSize.height;
     ContentDesc.Usage = D3D11_VIDEO_USAGE_OPTIMAL_SPEED;
 
     auto videoDevice = getVideoDevice();
