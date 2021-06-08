@@ -21,11 +21,15 @@
 
 #include "VideoTexture.h"
 
+#include <cassert>
+#include <iostream>
+#include <fstream>
 #include <stdexcept>
 
 namespace dp {
   VideoTexture::VideoTexture(D3D11Manager& d3d11Manager, D3D11_VIDEO_DECODER_DESC decoderDesc, UINT nbSurface)
-  : m_currentSurface(0) {
+  : m_d3d11Manager(d3d11Manager)
+  , m_currentSurface(0) {
     auto device = d3d11Manager.getDevice();
     auto videoDevice = d3d11Manager.getVideoDevice();
 
@@ -82,5 +86,80 @@ namespace dp {
 
   void VideoTexture::nextSurfaceIndex() {
     m_currentSurface = (m_currentSurface + 1) % m_outputViews.size();
+  }
+
+  void VideoTexture::copyToFile(const SizeI& realPictureSize, const std::filesystem::path& filename) {
+    D3D11_TEXTURE2D_DESC gpuTextureDesc;
+    m_texture->GetDesc(&gpuTextureDesc);
+
+    D3D11_TEXTURE2D_DESC cpuTextureDesc;
+    cpuTextureDesc.Width = gpuTextureDesc.Width;
+    cpuTextureDesc.Height = gpuTextureDesc.Height;
+    cpuTextureDesc.MipLevels = gpuTextureDesc.MipLevels;
+    cpuTextureDesc.ArraySize = 1; // We copy only the current texture
+    cpuTextureDesc.Format = gpuTextureDesc.Format;
+    cpuTextureDesc.SampleDesc = gpuTextureDesc.SampleDesc;
+    cpuTextureDesc.Usage = D3D11_USAGE_STAGING;
+    cpuTextureDesc.BindFlags = 0;
+    cpuTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    cpuTextureDesc.MiscFlags = 0;
+
+    ID3D11Texture2D* cpuTexture = nullptr;
+    HRESULT hRes = m_d3d11Manager.getDevice()->CreateTexture2D(&cpuTextureDesc, nullptr, &cpuTexture);
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[VideoTexture] Unable to create CPU ID3D11Texture2D");
+    }
+
+    // copy the texture to a staging resource
+    m_d3d11Manager.getDeviceContext()->CopySubresourceRegion(
+      cpuTexture,
+      0,
+      0,
+      0,
+      0,
+      m_texture.Get(),
+      m_currentSurface,
+      nullptr
+    );
+
+    // Map the staging resource
+    D3D11_MAPPED_SUBRESOURCE mapInfo;
+    hRes = m_d3d11Manager.getDeviceContext()->Map(
+      cpuTexture,
+      0,
+      D3D11_MAP_READ,
+      0,
+      &mapInfo
+    );
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[VideoTexture] Unable to map cpu texture");
+    }
+
+    uint8_t* yuvData = static_cast<uint8_t*>(mapInfo.pData);
+
+    auto file = std::fstream(filename, std::ios::out | std::ios::app | std::ios::binary);
+
+    // Copy luma
+    for (int h = 0; h < realPictureSize.height; ++h) {
+      assert(yuvData < ((static_cast<uint8_t*>(mapInfo.pData) + mapInfo.DepthPitch) - mapInfo.RowPitch));
+      file.write(reinterpret_cast<const char*>(yuvData), realPictureSize.width);
+      yuvData += mapInfo.RowPitch;
+    }
+
+    // Skip cropped rows
+    SizeI rawPictureSize = SizeI(gpuTextureDesc.Width, gpuTextureDesc.Height);
+    int skipCount = rawPictureSize.height - realPictureSize.height;
+    yuvData += mapInfo.RowPitch * skipCount;
+
+    // Copy color
+    for (int h = 0; h < (realPictureSize.height / 2); ++h) {
+      assert(yuvData < (((uint8_t*)mapInfo.pData + mapInfo.DepthPitch) - mapInfo.RowPitch));
+      file.write((char*)yuvData, realPictureSize.width);
+      yuvData += mapInfo.RowPitch;
+    }
+
+    file.close();
+
+    std::cout << "[VideoTexture] Dump YUV" << std::endl;
   }
 }

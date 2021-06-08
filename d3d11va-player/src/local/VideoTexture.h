@@ -24,6 +24,7 @@
 
 #include "WindowsHeaders.h"
 
+#include <filesystem>
 #include <vector>
 
 #include <wrl/client.h>
@@ -39,18 +40,21 @@ namespace dp {
     VideoTexture(D3D11Manager& d3d11Manager, D3D11_VIDEO_DECODER_DESC decoderDesc, UINT nbSurface);
     ~VideoTexture() = default;
 
-    ComPtr<ID3D11Texture2D> getTexture() const;
-    ComPtr<ID3D11VideoDecoderOutputView> getCurrentOutputView() const;
-    UINT getCurrentSurfaceIndex() const;
-    void nextSurfaceIndex();
-
     VideoTexture(const VideoTexture&) = delete;
     VideoTexture(VideoTexture&&) = delete;
 
     VideoTexture& operator=(const VideoTexture&) = delete;
     VideoTexture& operator=(VideoTexture&&) = delete;
 
+    ComPtr<ID3D11Texture2D> getTexture() const;
+    ComPtr<ID3D11VideoDecoderOutputView> getCurrentOutputView() const;
+    UINT getCurrentSurfaceIndex() const;
+    void nextSurfaceIndex();
+
+    void copyToFile(const SizeI& rawPictureSize, const std::filesystem::path& filename);
+
   private:
+    D3D11Manager& m_d3d11Manager;
     ComPtr<ID3D11Texture2D> m_texture;
     std::vector<ComPtr<ID3D11VideoDecoderOutputView>> m_outputViews;
     UINT m_currentSurface;
