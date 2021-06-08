@@ -26,8 +26,8 @@
 #include <cmath>
 #include <stdexcept>
 
-#include "Clock.h"
 #include "FileParser.h"
+#include "Utils.h"
 
 namespace {
   constexpr uint8_t StartCode3Bytes[3] = { 0x00, 0x00, 0x01 };
@@ -44,8 +44,29 @@ namespace dp {
   }
 
   const VideoTexture& Decoder::decodeSlice(FileParser& parser) {
-    Clock decodingClock;
     const auto& nal = *(parser.getStream().nal);
+
+    D3D11_QUERY_DESC queryDesc;
+    queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+    queryDesc.MiscFlags = 0;
+
+    ComPtr<ID3D11Query> queryTimestampDisjoint;
+    HRESULT hRes = m_d3d11Manager.getDevice()->CreateQuery(&queryDesc, queryTimestampDisjoint.GetAddressOf());
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Decoder] Unable to create a query for timestamp disjoint");
+    }
+
+    ComPtr<ID3D11Query> queryTimestamp;
+    queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+    hRes = m_d3d11Manager.getDevice()->CreateQuery(&queryDesc, queryTimestamp.GetAddressOf());
+    if (FAILED(hRes)) {
+      throw std::runtime_error("[Decoder] Unable to create a query for timestamp");
+    }
+
+    m_d3d11Manager.getDeviceContext()->Begin(queryTimestampDisjoint.Get());
+    m_d3d11Manager.getDeviceContext()->End(queryTimestamp.Get());
+    UINT64 startTimestamp;
+    while (S_OK != m_d3d11Manager.getDeviceContext()->GetData(queryTimestamp.Get(), &startTimestamp, sizeof(UINT64), 0));
 
     // Reset the decoded picture buffer when a IDR frame arrives
     if (nal.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_IDR) {
@@ -64,7 +85,7 @@ namespace dp {
     D3D11_VIDEO_DECODER_BUFFER_DESC listBufferDesc[4];
 
     // Start the frame (lock directx surface)
-    HRESULT hRes = m_d3d11Manager.getVideoContext()->DecoderBeginFrame(m_videoDecoder.Get(), outputView.Get(), 0, nullptr);
+    hRes = m_d3d11Manager.getVideoContext()->DecoderBeginFrame(m_videoDecoder.Get(), outputView.Get(), 0, nullptr);
     if (FAILED(hRes)) {
       throw std::runtime_error("[Decoder] Unable to begin the frame");
     }
@@ -94,8 +115,18 @@ namespace dp {
       throw std::runtime_error("[Decoder] Unable to end the frame");
     }
 
-    auto elapsedTime = decodingClock.elapsed();
-    std::cout << "[Decoder] Slice decoded in " << elapsedTime.count() << "ms" << std::endl;
+    m_d3d11Manager.getDeviceContext()->End(queryTimestamp.Get());
+    m_d3d11Manager.getDeviceContext()->End(queryTimestampDisjoint.Get());
+
+    UINT64 endTimestamp; // This data type is different depending on the query type
+    while (S_OK != m_d3d11Manager.getDeviceContext()->GetData(queryTimestamp.Get(), &endTimestamp, sizeof(UINT64), 0));
+
+    D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData; // This data type is different depending on the query type
+    while (S_OK != m_d3d11Manager.getDeviceContext()->GetData(queryTimestampDisjoint.Get(), &disjointData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0));
+    if (disjointData.Disjoint == FALSE) {
+      auto strResult = niceNum(static_cast<float>(endTimestamp - startTimestamp) / static_cast<float>(disjointData.Frequency) * 1000.0f, 0.01f);
+      std::cout << "[Decoder] Slice decoded in " << strResult << " ms" << std::endl;
+    }
 
     // Add the new decoded frame to the DPB
     if (nal.nal_ref_idc > 0) {
