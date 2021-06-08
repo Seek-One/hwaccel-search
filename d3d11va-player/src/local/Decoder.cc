@@ -29,9 +29,14 @@
 #include "Clock.h"
 #include "FileParser.h"
 
+namespace {
+  constexpr uint8_t StartCode3Bytes[3] = { 0x00, 0x00, 0x01 };
+}
+
 namespace dp {
-  Decoder::Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize)
+  Decoder::Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize, const SizeI& realPictureSize)
   : m_d3d11Manager(d3d11Manager)
+  , m_realPictureSize(realPictureSize)
   , m_videoDecoder(d3d11Manager.createVideoDecoder(rawPictureSize))
   , m_videoTexture(d3d11Manager.createVideoTexture(m_videoDecoder, DecodedBufferLimit))
   , m_currentReportID(1) {
@@ -246,12 +251,20 @@ namespace dp {
       throw std::runtime_error("[Decoder] the D3D11 VA buffer is too small");
     }
 
+    size_t bitstreamSize = 0;
+
+    // Copy the start code
+    std::memcpy(D3D11VABuffer, StartCode3Bytes, 3);
+    bitstreamSize += 3;
+
     // Copy bitstream data
-    std::memcpy(D3D11VABuffer, bitstream.data(), bitstream.size());
+    std::memcpy(D3D11VABuffer + bitstreamSize, bitstream.data(), bitstream.size());
+    bitstreamSize += bitstream.size();
 
     // Padding to align to 128 bits
-    ptrdiff_t paddingLength = std::min(static_cast<int>(128 - (bitstream.size() & 127)), static_cast<int>((D3D11VABuffer + D3D11VABufferSize) - (D3D11VABuffer + bitstream.size())));
-    std::memset(D3D11VABuffer + bitstream.size(), 0, paddingLength);
+    ptrdiff_t paddingLength = std::min(static_cast<int>(128 - (bitstreamSize & 127)), static_cast<int>((D3D11VABuffer + D3D11VABufferSize) - (D3D11VABuffer + bitstreamSize)));
+    std::memset(D3D11VABuffer + bitstreamSize, 0, paddingLength);
+    bitstreamSize += paddingLength;
 
     // Release the bitstream buffer
     hRes = m_d3d11Manager.getVideoContext()->ReleaseDecoderBuffer(m_videoDecoder.Get(), D3D11_VIDEO_DECODER_BUFFER_BITSTREAM);
@@ -266,13 +279,13 @@ namespace dp {
     // Update buffer bitstream description
     memset(&bitstreamBufferDesc, 0, sizeof(D3D11_VIDEO_DECODER_BUFFER_DESC));
     bitstreamBufferDesc.BufferType = D3D11_VIDEO_DECODER_BUFFER_BITSTREAM;
-    bitstreamBufferDesc.DataSize = static_cast<UINT>(bitstream.size());
+    bitstreamBufferDesc.DataSize = static_cast<UINT>(bitstreamSize);
     bitstreamBufferDesc.NumMBsInBuffer = totalMB;
 
     // Add the entries to slice control
     DXVA_Slice_H264_Short sliceControl;
-    sliceControl.BSNALunitDataLocation = 1;
-    sliceControl.SliceBytesInBuffer = static_cast<UINT>(bitstream.size());
+    sliceControl.BSNALunitDataLocation = 0;
+    sliceControl.SliceBytesInBuffer = static_cast<UINT>(bitstreamSize);
     sliceControl.wBadSliceChopping = 0;
     listSliceControl.push_back(sliceControl);
 

@@ -42,9 +42,10 @@ int main(int argc, char* argv[]) {
   dp::FileParser fileParser(argv[1]);
   fileParser.extractPictureSizes();
   auto rawPictureSize = fileParser.getRawPictureSize();
+  auto realPictureSize = fileParser.getRealPictureSize();
 
   dp::D3D11Manager manager;
-  dp::Decoder decoder(manager, rawPictureSize);
+  dp::Decoder decoder(manager, rawPictureSize, realPictureSize);
   dp::Window window(manager);
   dp::Filter filter(manager);
 

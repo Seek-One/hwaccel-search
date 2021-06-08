@@ -35,7 +35,7 @@ namespace dp {
 
   class Decoder {
   public:
-    Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize);
+    Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize, const SizeI& realPictureSize);
     ~Decoder() = default;
 
     Decoder(const Decoder&) = delete;
@@ -89,6 +89,8 @@ namespace dp {
 
   private:
     D3D11Manager& m_d3d11Manager;
+    SizeI m_realPictureSize;
+
     ComPtr<ID3D11VideoDecoder> m_videoDecoder;
     VideoTexture m_videoTexture;
     unsigned m_currentReportID;

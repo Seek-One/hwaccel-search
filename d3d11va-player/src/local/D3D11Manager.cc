@@ -27,6 +27,7 @@
 // so I need to redeclare the constant and add initguid.h header file
 #include <initguid.h>
 DEFINE_GUID(D3D11_DECODER_PROFILE_H264_VLD_NOFGT,    0x1b81be68, 0xa0c7,0x11d3,0xb9,0x84,0x00,0xc0,0x4f,0x2e,0x73,0xc5);
+DEFINE_GUID(DXVA2_NoEncrypt,                         0x1b81beD0, 0xa0c7,0x11d3,0xb9,0x84,0x00,0xc0,0x4f,0x2e,0x73,0xc5);
 
 #include "VideoTexture.h"
 
@@ -141,10 +142,14 @@ namespace dp {
         throw std::runtime_error("[D3D11Manager] Invalid configuration index provided");
       }
 
-      if (/*conf.ConfigBitstreamRaw == 1 || */decoderConfig.ConfigBitstreamRaw == 2) {
+      if (/*conf.ConfigBitstreamRaw == 1 || */decoderConfig.ConfigBitstreamRaw == 2 && decoderConfig.guidConfigBitstreamEncryption == DXVA2_NoEncrypt) {
         configFound = true;
         break;
       }
+    }
+
+    if (!configFound) {
+      throw std::runtime_error("[D3D11Manager] No decoder configuration found");
     }
 
     hRes = videoDevice->CreateVideoDecoder(&decoderDesc, &decoderConfig, videoDecoder.GetAddressOf());

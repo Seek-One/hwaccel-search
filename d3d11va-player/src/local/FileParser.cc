@@ -127,12 +127,12 @@ namespace dp {
       return false;
     }
 
-    // Keep the nal with the start code
-    m_currentNAL = std::vector<uint8_t>(m_dataCursor, m_dataCursor + nalEnd);
-
     // Process the NAL unit and update the h264 context
     m_dataCursor += nalStart;
     read_nal_unit(m_h264Stream, m_dataCursor, nalEnd - nalStart);
+
+    // Remove the nal start code
+    m_currentNAL = std::vector<uint8_t>(m_dataCursor, m_dataCursor + (nalEnd - nalStart));
 
     // Forward to next NAL
     m_dataCursor += (nalEnd - nalStart) + 1;
