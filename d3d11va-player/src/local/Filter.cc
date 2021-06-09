@@ -53,14 +53,14 @@ namespace dp {
     ComPtr<ID3D11Query> queryTimestampDisjoint;
     HRESULT hRes = m_d3d11Manager.getDevice()->CreateQuery(&queryDesc, queryTimestampDisjoint.GetAddressOf());
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Decoder] Unable to create a query for timestamp disjoint");
+      throw std::runtime_error("[Filter] Unable to create a query for timestamp disjoint");
     }
 
     ComPtr<ID3D11Query> queryTimestamp;
     queryDesc.Query = D3D11_QUERY_TIMESTAMP;
     hRes = m_d3d11Manager.getDevice()->CreateQuery(&queryDesc, queryTimestamp.GetAddressOf());
     if (FAILED(hRes)) {
-      throw std::runtime_error("[Decoder] Unable to create a query for timestamp");
+      throw std::runtime_error("[Filter] Unable to create a query for timestamp");
     }
 
     m_d3d11Manager.getDeviceContext()->Begin(queryTimestampDisjoint.Get());
@@ -109,7 +109,7 @@ namespace dp {
     while (S_OK != m_d3d11Manager.getDeviceContext()->GetData(queryTimestampDisjoint.Get(), &disjointData, sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0));
     if (disjointData.Disjoint == FALSE) {
       auto strResult = niceNum(static_cast<float>(endTimestamp - startTimestamp) / static_cast<float>(disjointData.Frequency) * 1000.0f, 0.01f);
-      std::cout << "[Decoder] Frame resized in " << strResult << " ms" << std::endl;
+      std::cout << "[Filter] Frame resized in " << strResult << " ms" << std::endl;
     }
   }
 
@@ -125,19 +125,16 @@ namespace dp {
     UINT uiFlags;
     HRESULT hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_NV12, &uiFlags);
     if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT)) {
-      throw std::runtime_error("[Window] NV12 is not supported as input format");
+      throw std::runtime_error("[Filter] NV12 is not supported as input format");
     }
 
     hRes = m_videoProcessorEnumerator->CheckVideoProcessorFormat(DXGI_FORMAT_B8G8R8A8_UNORM, &uiFlags);
     if (FAILED(hRes) || 0 == (uiFlags & D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT)) {
-      throw std::runtime_error("[Window] BGRA is not supported as output format");
+      throw std::runtime_error("[Filter] BGRA is not supported as output format");
     }
 
-    // TODO: which framerate conversion check? For now, just take the first
-    UINT rateConversionIndex = 0;
-
     // Create the video processor
-    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator, rateConversionIndex);
+    m_videoProcessor = m_d3d11Manager.createVideoProcessor(m_videoProcessorEnumerator);
   }
 
 }

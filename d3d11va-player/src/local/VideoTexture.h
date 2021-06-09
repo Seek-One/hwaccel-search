@@ -35,8 +35,21 @@
 struct ID3D11Texture2D;
 
 namespace dp {
+  /**
+   * @brief Texture handler to store the decoded NV12 frame
+   *
+   * This class is a texture array on which the decoder will store the NV12
+   * decoded picture.
+   */
   class VideoTexture {
   public:
+    /**
+     * @brief Construct a new Video Texture object
+     *
+     * @param d3d11Manager Reference to D3D11Manager
+     * @param decoderDesc Decoder information
+     * @param nbSurface Number of surface
+     */
     VideoTexture(D3D11Manager& d3d11Manager, D3D11_VIDEO_DECODER_DESC decoderDesc, UINT nbSurface);
     ~VideoTexture() = default;
 
@@ -46,12 +59,39 @@ namespace dp {
     VideoTexture& operator=(const VideoTexture&) = delete;
     VideoTexture& operator=(VideoTexture&&) = delete;
 
+    /**
+     * @brief Get the all texture array
+     *
+     * @return ComPtr<ID3D11Texture2D> to the texture array
+     */
     ComPtr<ID3D11Texture2D> getTexture() const;
+
+    /**
+     * @brief Get the Current Output View object
+     *
+     * @return ComPtr<ID3D11VideoDecoderOutputView> to the current output view
+     */
     ComPtr<ID3D11VideoDecoderOutputView> getCurrentOutputView() const;
+
+    /**
+     * @brief Get the current surface index
+     *
+     * @return UINT Surface index
+     */
     UINT getCurrentSurfaceIndex() const;
+
+    /**
+     * @brief Pass to next surface
+     */
     void nextSurfaceIndex();
 
-    void copyToFile(const SizeI& rawPictureSize, const std::filesystem::path& filename);
+    /**
+     * @brief Dump raw NV12 surface to a file
+     *
+     * @param realPictureSize Real picture size
+     * @param filename Dump filename
+     */
+    void copyToFile(const SizeI& realPictureSize, const std::filesystem::path& filename);
 
   private:
     D3D11Manager& m_d3d11Manager;

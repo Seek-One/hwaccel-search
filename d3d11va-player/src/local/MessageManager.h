@@ -27,25 +27,37 @@
 #include "Size.h"
 
 namespace dp {
+  /**
+   * @brief Represent different message type
+   */
   enum class MessageType {
-    Resize,
-    Quit,
+    Resize, //<! Rise event
+    Quit, //<! Quit event
   };
 
+  /**
+   * @brief Encapsulate a message
+   */
   struct Message {
-    MessageType type;
+    MessageType type; //<! Message type
 
     union {
       struct {
-        SizeI windowSize;
-      } resize;
+        SizeI windowSize; //<! New window size
+      } resize; //<! Useful value for resize event
     };
   };
 
-  constexpr LPCWSTR szWindowClass = L"D3D11VAPLAYER";
+  constexpr LPCWSTR szWindowClass = L"D3D11VAPLAYER"; //<! Window class name for WIN32 API
 
+  /**
+   * @brief Manage message form WIN32 API
+   */
   class MessageManager {
   public:
+    /**
+     * @brief Construct a new Message Manager object
+     */
     MessageManager();
     ~MessageManager() = default;
 
@@ -55,6 +67,13 @@ namespace dp {
     MessageManager& operator=(const MessageManager&) = delete;
     MessageManager& operator=(MessageManager&&) = delete;
 
+    /**
+     * @brief Retrieve a message
+     *
+     * @param message The message retrived
+     *
+     * @return true if there are a pending message otherwise false
+     */
     bool poolMessage(Message& message);
   };
 }

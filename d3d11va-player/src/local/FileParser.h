@@ -30,9 +30,21 @@
 #include "Size.h"
 
 namespace dp {
+  /**
+   * @brief H264 bitstream parser
+   */
   class FileParser {
   public:
+    /**
+     * @brief Construct a new File Parser object
+     *
+     * @param bitstreamPath Path to the bitstream
+     */
     FileParser(const std::filesystem::path& bitstreamPath);
+
+    /**
+     * @brief Destroy the File Parser object
+     */
     ~FileParser();
 
     FileParser(const FileParser&) = delete;
@@ -41,15 +53,72 @@ namespace dp {
     FileParser& operator=(const FileParser&) = delete;
     FileParser& operator=(FileParser&&) = delete;
 
+    /**
+     * @brief Read the bitstream to compute the picture size
+     *
+     * This method read just enough NAL to get 3 different sizes:
+     * 1. Picture size expressed in macroblocks
+     * 2. Picture size without cropping
+     * 3. Actually picture size
+     */
     void extractPictureSizes();
+
+    /**
+     * @brief Get the Picture Size expressed in macroblock
+     *
+     * Must be call after extractPictureSizes() method.
+     *
+     * @return const SizeI& Macroblock size
+     */
     const SizeI& getMbPictureSize() const;
+
+    /**
+     * @brief Get the Picture Size without cropping
+     *
+     * Must be call after extractPictureSizes() method.
+     *
+     * @return const SizeI& Uncropped size
+     */
     const SizeI& getRawPictureSize() const;
+
+    /**
+     * @brief Get the actually Picture Size
+     *
+     * Must be call after extractPictureSizes() method.
+     *
+     * @return const SizeI& Real picture size
+     */
     const SizeI& getRealPictureSize() const;
 
+    /**
+     * @brief Process the next NAL
+     *
+     * @return true when a NAL was processed otherwise false
+     */
     bool parseNextNAL();
+
+    /**
+     * @brief Get the h264 nal informations
+     *
+     * @return const h264_stream_t& Reference to the h264_stream_t structure
+     */
     const h264_stream_t& getStream() const;
+
+    /**
+     * @brief Get the Current NAL data
+     *
+     * The NAL is returned whitout start code
+     *
+     * @return const std::vector<uint8_t>& Bytes vector containing the NAL
+     */
     const std::vector<uint8_t>& getCurrentNAL() const;
 
+    /**
+     * @brief Compute the Picture Order Count for the current image
+     *
+     * @param TopFieldOrderCnt Computed Top Field Order Count
+     * @param BottomFieldOrderCnt Computed Bottom Field Order Count
+     */
     void computePoc(int& TopFieldOrderCnt, int& BottomFieldOrderCnt);
 
   private:

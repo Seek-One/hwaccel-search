@@ -25,6 +25,13 @@
 #include <string>
 
 namespace dp {
+  /**
+   * @brief Format a string to display float with specific precision
+   *
+   * @param num Float value
+   * @param precision Needed precision (default 0.01)
+   * @return std::string fromated string
+   */
   std::string niceNum(float num, float precision = 0.01f);
 }
 

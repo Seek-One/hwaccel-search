@@ -25,12 +25,26 @@
 #include <chrono>
 
 namespace dp {
+  /**
+   * @brief Simple utility class to measure elapsed time
+   */
   class Clock {
   public:
+    /**
+     * @brief Construct a new Clock object
+     *
+     * The elapsed time start when the object is created
+     */
     Clock() {
       start();
     }
 
+    /**
+     * @brief Retrun the elapsed time
+     *
+     * @tparam TimeUnit Define the unit time (by default millisecond)
+     * @return TimeUnit Elapsed time
+     */
     template<typename TimeUnit = std::chrono::milliseconds>
     TimeUnit elapsed() {
       auto end = std::chrono::steady_clock::now();

@@ -22,13 +22,21 @@
 #ifndef LOCAL_WINDOW_H_
 #define LOCAL_WINDOW_H_
 
-#include "D3D11Manager.h" // Must be included in first
+#include "D3D11Manager.h"
 
 namespace dp {
   class VideoTexture;
 
+  /**
+   * @brief Display the window
+   */
   class Window {
   public:
+    /**
+     * @brief Construct a new Window object
+     *
+     * @param d3d11Manager Reference to D3D11Manager
+     */
     Window(D3D11Manager& d3d11Manager);
     ~Window() = default;
 
@@ -38,13 +46,44 @@ namespace dp {
     Window& operator=(const Window&) = delete;
     Window& operator=(Window&&) = delete;
 
-    SizeI getRendererSize() const;
+    /**
+     * @brief Get the current back buffer
+     *
+     * @return ComPtr<ID3D11Texture2D>
+     */
     ComPtr<ID3D11Texture2D> getCurrentBackbuffer();
 
+    /**
+     * @brief Resize the window
+     *
+     * This method must be call to recreate the swap chain when on resize event arrive
+     *
+     * @param newSize New window size
+     */
     void resize(const SizeI& newSize);
+
+    /**
+     * @brief Indicate if the window is active
+     *
+     * @return true if the window is active otherwise false
+     */
     bool isActive() const;
+
+    /**
+     * @brief Process WIN32 message
+     */
     void procMessage();
+
+    /**
+     * @brief Clear the render
+     */
     void clear();
+
+    /**
+     * @brief Display the filtered image
+     *
+     * We do not need to pass the buffer here since the Filter take directly the back buffer
+     */
     void render();
 
   private:

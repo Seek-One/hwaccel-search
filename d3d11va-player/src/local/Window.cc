@@ -120,10 +120,6 @@ namespace dp {
     setViewport();
   }
 
-  SizeI Window::getRendererSize() const {
-    return m_rendererSize;
-  }
-
   ComPtr<ID3D11Texture2D> Window::getCurrentBackbuffer() {
     ComPtr<ID3D11Texture2D> backBuffer;
     HRESULT hRes = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));

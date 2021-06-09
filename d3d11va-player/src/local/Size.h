@@ -25,6 +25,12 @@
 #include <type_traits>
 
 namespace dp {
+  /**
+   * @brief Utility class to represent a size
+   *
+   * @tparam IntegralType Integral data type
+   * @tparam std::enable_if_t<std::is_integral_v<IntegralType> > SFINAE type to ensure integral type
+   */
   template<typename IntegralType, typename = std::enable_if_t<std::is_integral_v<IntegralType> > >
   struct Size {
     IntegralType width;

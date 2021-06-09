@@ -25,8 +25,16 @@
 #include "D3D11Manager.h"
 
 namespace dp {
+  /**
+   * @brief Resize the video frame and do the color space conversion
+   */
   class Filter {
   public:
+    /**
+     * @brief Construct a new Filter object
+     *
+     * @param d3d11Manager Reference to D3D11Manager
+     */
     Filter(D3D11Manager& d3d11Manager);
     ~Filter() = default;
 
@@ -36,6 +44,12 @@ namespace dp {
     Filter& operator=(const Filter&) = delete;
     Filter& operator=(Filter&&) = delete;
 
+    /**
+     * @brief Resize the decodedTexture
+     *
+     * @param decodedTexture VideoTexture form the Decoder
+     * @param renderTexture Render texture from the window swap chain
+     */
     void process(const VideoTexture& decodedTexture, ComPtr<ID3D11Texture2D> renderTexture);
 
   private:

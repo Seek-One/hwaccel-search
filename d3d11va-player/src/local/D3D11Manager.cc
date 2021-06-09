@@ -168,36 +168,6 @@ namespace dp {
     return VideoTexture(*this, decoderDesc, nbSurface);
   }
 
-  ComPtr<ID3D11Texture2D> D3D11Manager::createOutputTexture(SizeI backBufferSize) {
-    ComPtr<ID3D11Texture2D> outputTexture;
-
-    D3D11_TEXTURE2D_DESC textureDesc;
-    ZeroMemory(&textureDesc, sizeof(D3D11_TEXTURE2D_DESC));
-    textureDesc.Width = backBufferSize.width;
-    textureDesc.Height = backBufferSize.height;
-    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-    textureDesc.CPUAccessFlags = 0;
-    textureDesc.MiscFlags = 0;
-    textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = 1;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.SampleDesc.Quality = 0;
-    textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
-
-    auto device = getDevice();
-    HRESULT hRes = device->CreateTexture2D(
-      &textureDesc,
-      nullptr,
-      outputTexture.GetAddressOf()
-    );
-    if (FAILED(hRes)) {
-      throw std::runtime_error("[D3D11Manager] Unable to create BGRA output texture");
-    }
-
-    return outputTexture;
-  }
-
   ComPtr<IDXGISwapChain1> D3D11Manager::createSwapChain(HWND hWnd) {
     ComPtr<IDXGISwapChain1> swapChain;
 
@@ -261,13 +231,13 @@ namespace dp {
     return videoProcessorEnumerator;
   }
 
-  ComPtr<ID3D11VideoProcessor> D3D11Manager::createVideoProcessor(ComPtr<ID3D11VideoProcessorEnumerator> enumerator, UINT rateConversionIndex) {
+  ComPtr<ID3D11VideoProcessor> D3D11Manager::createVideoProcessor(ComPtr<ID3D11VideoProcessorEnumerator> enumerator) {
     ComPtr<ID3D11VideoProcessor> videoProcessor;
 
     auto videoDevice = getVideoDevice();
 
     // Second effective creation
-    HRESULT hRes = videoDevice->CreateVideoProcessor(enumerator.Get(), rateConversionIndex, videoProcessor.GetAddressOf());
+    HRESULT hRes = videoDevice->CreateVideoProcessor(enumerator.Get(), 0, videoProcessor.GetAddressOf());
     if (FAILED(hRes)) {
       throw std::runtime_error("[D3D11Manager] Unable to create a video processor");
     }

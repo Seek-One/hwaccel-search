@@ -33,8 +33,21 @@
 namespace dp {
   class FileParser;
 
+  /**
+   * @brief Video decoder
+   *
+   * This class creates a VideoTexture to store the decoded NV12 picture. Its aims
+   * to keep an updated DecodedPictureBuffer to send all needed data to the D3D11 video context.
+   */
   class Decoder {
   public:
+    /**
+     * @brief Construct a new Decoder object
+     *
+     * @param d3d11Manager Reference to D3D11Manager
+     * @param rawPictureSize Picture size uncropped
+     * @param realPictureSize Real picture size
+     */
     Decoder(D3D11Manager& d3d11Manager, const SizeI& rawPictureSize, const SizeI& realPictureSize);
     ~Decoder() = default;
 
@@ -44,6 +57,12 @@ namespace dp {
     Decoder& operator=(const Decoder&) = delete;
     Decoder& operator=(Decoder&&) = delete;
 
+    /**
+     * @brief Decode a new NAL
+     *
+     * @param parser Reference to the H264 parser
+     * @return const VideoTexture&
+     */
     const VideoTexture& decodeSlice(FileParser& parser);
 
   private:
